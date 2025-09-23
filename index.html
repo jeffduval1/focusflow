@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusFlow</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@600&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <header>
+        <h1>FocusFlow</h1>
+        <div class="header-actions">
+            <button id="exportBtn">📤 Exporter</button>
+            <input type="file" id="importFile" hidden>
+            <button id="importBtn">📥 Importer</button>
+        </div>
+    </header>
+
+    <main>
+       <!-- Haut de page : Urgents et Importants -->
+<div class="top-grid">
+    <section id="urgent-list">
+      <h2>🔥 Urgent & Important</h2>
+      <ul></ul>
+    </section>
+  
+    <section id="important-list">
+      <h2>⭐ Important & Non urgent</h2>
+      <ul></ul>
+    </section>
+  </div>
+
+        <!-- Colonne centrale et droite -->
+        <div class="grid">
+            <!-- Liste principale -->
+            <section id="task-list">
+                <h2>📝 Tâches (cote 10 → 1)</h2>
+            
+                <!-- Bouton pour ouvrir la modale -->
+                <button id="openTaskModal">➕ Nouvelle tâche</button>
+            
+                <!-- Liste -->
+                <ul></ul>
+            </section>
+            
+
+            <!-- Colonne droite -->
+            <aside>
+                <section id="deadlines">
+                    <h2>⏳ Échéances</h2>
+                    <ul></ul>
+                </section>
+
+                <section id="events">
+                    <h2>📅 Rendez-vous</h2>
+                    <form id="eventForm">
+                        <input type="text" id="eventTitle" placeholder="Nouvel événement" required>
+                        <input type="date" id="eventDate" required>
+                        <input type="time" id="eventTime">
+                        <button type="submit">Ajouter événement</button>
+                    </form>
+                    <ul></ul>
+                </section>
+            </aside>
+        </div>
+        <div class="bottom-grid">
+            <section id="urgent-notimportant-list">
+              <h2>⚡ Urgent & Non important</h2>
+              <ul></ul>
+            </section>
+          
+            <section id="noturgent-notimportant-list">
+              <h2>💤 Non urgent & Non important</h2>
+              <ul></ul>
+            </section>
+          </div>
+    </main>
+    <script type="module" src="js/main.js"></script>
+     <!-- Modale -->
+     <div id="taskModal" class="modal hidden">
+        <div class="modal-content">
+            <span id="closeTaskModal" class="close">&times;</span>
+            <h2>Nouvelle tâche</h2>
+            <form id="taskForm">
+                <input type="text" id="taskTitle" placeholder="Nom de la tâche" required>
+                <select id="taskCote" required>
+                    <option value="" disabled selected>Cote (1-10)</option>
+                    <option value="10">10</option>
+                    <option value="9">9</option>
+                    <option value="8">8</option>
+                    <option value="7">7</option>
+                    <option value="6">6</option>
+                    <option value="5">5</option>
+                    <option value="4">4</option>
+                    <option value="3">3</option>
+                    <option value="2">2</option>
+                    <option value="1">1</option>
+                </select>
+
+                <input type="date" id="taskDue">
+                <div class="categories">
+                    <div id="categoryWrapper">
+                      <select id="taskCategory" required>
+                        <option value="" disabled selected>— Choisir une catégorie —</option>
+                        <option value="Travail" style="background:#1C2D49; color:#fff;">Travail</option>
+                        <option value="Famille" style="background:#8C3C3C; color:#fff;">Famille</option>
+                        <option value="Maison" style="background:#4B7355; color:#fff;">Maison</option>
+                        <option value="Loisirs" style="background:#B58B00; color:#000;">Loisirs</option>
+                        <option value="Kung-Fu" style="background:#8046A0; color:#fff;">Kung-Fu</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  
+                <button type="submit">Ajouter tâche</button>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>
