@@ -1,5 +1,5 @@
-import { getTasks, deleteTask, updateTask } from "./tasks.js";
-import { getEvents, deleteEvent } from "./events.js";
+import { getTasks, deleteTask, updateTask, addTask } from "./tasks.js";
+import { getEvents, deleteEvent, addEvent } from "./events.js";
 
 // 🔧 Fonction utilitaire pour construire un <li> de tâche
 function buildTaskItem(t, context = "main") {
@@ -191,4 +191,105 @@ export async function renderEvents() {
 
       ul.appendChild(li);
     });
+}
+// --- Menu déroulant pour importation JSON ---
+const importFileInput = document.getElementById("importFile");
+const btnImport = document.getElementById("btnImport");
+const importMenu = document.getElementById("importMenu");
+
+btnImport.addEventListener("click", () => {
+  importMenu.classList.toggle("hidden");
+});
+
+// Fermer si clic en dehors
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".import-wrapper")) {
+    importMenu.classList.add("hidden");
+  }
+});
+// Quand on clique sur Fusionner ou Remplacer tout
+document.querySelectorAll(".import-option").forEach(option => {
+  option.addEventListener("click", () => {
+    const mode = option.dataset.mode; // "fusion" ou "remplacer"
+    importMenu.classList.add("hidden");
+
+    // stocke le mode et ouvre le sélecteur de fichier
+    importFileInput.dataset.mode = mode;
+    importFileInput.click();
+  });
+});
+
+// Quand on a choisi un fichier
+importFileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+    const contenu = event.target.result;
+    await importerJSON(contenu, importFileInput.dataset.mode);
+    importFileInput.value = ""; // reset pour pouvoir réutiliser le même fichier
+  };
+  reader.readAsText(file);
+});
+
+async function viderBaseDeDonnees() {
+  const tasks = await getTasks();
+  for (let t of tasks) {
+    await deleteTask(t.id);
+  }
+
+  const events = await getEvents();
+  for (let e of events) {
+    await deleteEvent(e.id);
+  }
+}
+async function trouverTacheParTitre(titre) {
+  const tasks = await getTasks();
+  return tasks.find(t => t.title === titre) || null;
+}
+
+async function trouverEvenementParTitre(titre) {
+  const events = await getEvents();
+  return events.find(e => e.title === titre) || null;
+}
+
+// 🔧 importer JSON avec fusion/remplacement
+export async function importerJSON(contenu, mode = "fusion") {
+  try {
+    const data = JSON.parse(contenu);
+
+    if (mode === "remplacer") {
+      await viderBaseDeDonnees();
+    }
+
+    if (Array.isArray(data.tasks)) {
+      for (const t of data.tasks) {
+        if (mode === "fusion") {
+          const existante = await trouverTacheParTitre(t.title);
+          if (existante) continue;
+        }
+        await addTask(t);
+      }
+    }
+
+    if (Array.isArray(data.events)) {
+      for (const ev of data.events) {
+        if (mode === "fusion") {
+          const existant = await trouverEvenementParTitre(ev.title);
+          if (existant) continue;
+        }
+        await addEvent(ev);
+      }
+    }
+
+    await renderTasks();
+    await renderEvents();
+
+    alert(`✅ Import terminé (${mode === "fusion" ? "fusion sans doublons" : "remplacement total"})`);
+
+  } catch (err) {
+    console.error("Erreur import:", err);
+    alert("❌ Fichier invalide ou erreur d’import.");
+  }
 }

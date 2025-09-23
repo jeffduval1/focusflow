@@ -83,18 +83,7 @@ document.querySelector("#exportBtn").onclick = async () => {
   a.click();
 };
 
-document.querySelector("#importBtn").onclick = () => {
-  document.querySelector("#importFile").click();
-};
 
-document.querySelector("#importFile").onchange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const text = await file.text();
-  const { tasks, events } = JSON.parse(text);
-  for (let t of tasks) await addTask(t);
-  for (let ev of events) await addEvent(ev);
-};
 // Gestion de la modale de tâche
 const taskModal = document.getElementById("taskModal");
 const openTaskModal = document.getElementById("openTaskModal");

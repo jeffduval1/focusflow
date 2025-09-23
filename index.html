@@ -15,8 +15,21 @@
         <h1>FocusFlow</h1>
         <div class="header-actions">
             <button id="exportBtn">📤 Exporter</button>
-            <input type="file" id="importFile" hidden>
-            <button id="importBtn">📥 Importer</button>
+            <div class="import-wrapper">
+                <button id="btnImport">📂 Importer ▼</button>
+                <div id="importMenu" class="dropdown hidden">
+                    <div class="import-option" data-mode="fusion">
+                        🔄 Fusionner 
+                        <span class="info" data-info="Ajoute seulement les nouvelles tâches/événements. Si le titre existe déjà, on garde l’existant.">ℹ️</span>
+                      </div>
+                      <div class="import-option" data-mode="remplacer">
+                        🗑️ Remplacer tout 
+                        <span class="info" data-info="Supprime toutes les données actuelles et recharge uniquement celles du fichier importé.">ℹ️</span>
+                      </div>
+                </div>
+                <input type="file" id="importFile" accept="application/json" hidden>
+              </div>
+              
         </div>
     </header>
 

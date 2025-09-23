@@ -202,14 +202,7 @@
     justify-content: flex-end;
   }
   
-  .task-category {
-    padding: 0.3rem 0.7rem;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    min-width: 110px; /* 👈 largeur constante pour toutes les catégories */
-    text-align: center;
-  }
+ 
   
   .delete-btn {
     background: transparent;
@@ -228,12 +221,7 @@
     gap: 0.5rem;
   }
   
-  .task-category {
-    padding: 0.3rem 0.7rem;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.9rem;
-  }
+
   
   .remove-cat-btn {
     background: transparent;
@@ -270,6 +258,8 @@
     border-radius: 6px;
     font-weight: 600;
     font-size: 0.9rem;
+    min-width: 110px; /* 👈 largeur constante pour toutes les catégories */
+    text-align: center;
   }
   
   .task-category.sans-cat {
@@ -291,4 +281,103 @@
       grid-template-columns: 1fr; /* empilé sur mobile */
     }
   }
-  
+  /* Conteneur global : Exporter + Importer en ligne */
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center; 
+  margin-right: 4rem;
+}
+
+/* Boutons Exporter et Importer */
+#exportBtn,
+#btnImport {
+  padding: 6px 12px;
+  border: none;
+  background: var(--color-accent);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: black;
+  font-weight: 600; 
+}
+
+#exportBtn:hover,
+#btnImport:hover {
+  background: var(--color-alert);
+  color: var(--color-white);
+}
+
+/* Position relative pour que le menu s’affiche juste sous Importer */
+.import-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* Menu déroulant */
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: auto;
+  background: white;
+  border: 1px solid var(--color-light-grey);
+  border-radius: 6px;
+  margin-top: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 1000;
+  min-width: 220px;
+}
+
+/* Masqué par défaut */
+.dropdown.hidden {
+  display: none;
+}
+
+/* Options dans le menu */
+.import-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9em;
+}
+
+.import-option:hover {
+  background: var(--color-light-grey);
+}
+
+/* Petite icône d’info ℹ️ */
+.info {
+  font-size: 0.85em;
+  cursor: help;
+  color: var(--couleur-principale);
+}
+.info {
+  position: relative;
+  cursor: help;
+  font-size: 1.1em; 
+}
+
+.info:hover::before {
+  content: attr(data-info);
+  position: absolute;
+  top: 100%;
+  right: 120%;
+  transform: translateX(-50%);
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-light-grey);
+  white-space: normal;
+  width: 220px;
+  font-size: 0.85em;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  margin-top: 4px;
+  z-index: 20;
+}
