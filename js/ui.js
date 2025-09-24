@@ -230,15 +230,11 @@ document.addEventListener("click", (e) => {
   });
 
   // --- Bouton suppression ---
-  const del = document.createElement("button");
-  del.classList.add("delete-btn");
-  del.textContent = "❌";
+const del = document.createElement("button");
+del.classList.add("delete-btn");
+del.textContent = "❌";
+del.onclick = () => deleteTask(t.id);
 
-  if (context === "main") {
-    del.onclick = () => deleteTask(t.id); // vraie suppression
-  } else {
-    del.onclick = () => li.remove(); // effacement visuel seulement
-  }
 
   // Assembler
   right.appendChild(select);
