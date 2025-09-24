@@ -398,3 +398,49 @@ input[type="date"] {
   border-radius: 6px;
   border: 1px solid #ccc;
 }
+.echeance-date {
+  font-weight: 600;
+  margin-right: 0.5rem;
+  color: darkred;
+}
+.echeance-title {
+  color: var(--text);
+}
+/* Chaque ligne d'échéance */
+.echeance-item {
+  display: grid;
+  grid-template-columns: 120px 20px 1fr auto; /* date | flèche | titre | bouton */
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.5rem;
+  background: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+/* Date bien alignée */
+.echeance-date {
+  font-weight: 700;
+  color: #b00; /* rouge foncé par défaut */
+}
+
+/* Flèche toujours collée à la date */
+.echeance-arrow {
+  text-align: center;
+  color: var(--text);
+}
+
+/* Titre aligné à gauche */
+.echeance-title {
+  text-align: left;
+  color: var(--text);
+}
+.echeance-month {
+  font-size: 0.9rem;       /* plus compacte que le texte normal */
+  font-weight: 600;        /* gras mais pas excessif */
+  color: #666;             /* gris moyen, moins contrasté */
+  margin-top: 1rem;        /* petit espace avant chaque mois */
+  margin-bottom: 0.3rem;   /* resserré par rapport aux items */
+  text-transform: capitalize; /* garde la première lettre en majuscule */
+}

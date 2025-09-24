@@ -107,8 +107,20 @@ dueBadge.onclick = (e) => {
 
 // Quand la date change
 dueInput.onchange = () => {
+  appliquerNouvelleEcheance();
+};
+dueInput.onblur = () => {
+  // Même si la valeur est identique, on considère que l'utilisateur a confirmé
+  appliquerNouvelleEcheance();
+};
+
+function appliquerNouvelleEcheance() {
   t.due = dueInput.value || null;
   updateTask(t);
+
+  if (t.id) {
+    echeancesMasquees.delete(t.id);
+  }
 
   if (t.due) {
     dueBadge.textContent = `⏳ ${t.due}`;
@@ -118,7 +130,11 @@ dueInput.onchange = () => {
 
   dueBadge.style.display = "inline-block";
   dueInput.classList.add("hidden");
-};
+
+  renderTasks();
+}
+
+
 
 right.appendChild(dueInput);
 // Fermer si clic en dehors
@@ -186,6 +202,8 @@ document.addEventListener("click", (e) => {
 
   return li;
 }
+// Registre des échéances masquées (par id de tâche)
+let echeancesMasquees = new Set();
 
 // --- Rendu principal ---
 export async function renderTasks() {
@@ -204,10 +222,10 @@ export async function renderTasks() {
   taskList.innerHTML = "";
   deadlines.innerHTML = "";
 
+  // --- Quadrants + liste principale
   tasks
     .sort((a, b) => b.cote - a.cote)
     .forEach((t) => {
-      // Placement selon cote
       if (t.cote >= 8) {
         urgentList.appendChild(buildTaskItem(t, "quad"));
       } else if (t.cote >= 5) {
@@ -218,17 +236,76 @@ export async function renderTasks() {
         notUrgentNotImportantList.appendChild(buildTaskItem(t, "quad"));
       }
 
-      // Liste principale
       taskList.appendChild(buildTaskItem(t, "main"));
-
-      // Échéances
-      if (t.due) {
-        const dl = document.createElement("li");
-        dl.textContent = `${t.title} → ${t.due}`;
-        deadlines.appendChild(dl);
-      }
     });
+
+  // --- Échéances groupées par mois (triées par date croissante)
+  const echeances = tasks
+    .filter(t => t.due && !echeancesMasquees.has(t.id))
+    .map(t => ({ ...t, dueDate: new Date(t.due) }))
+    .sort((a, b) => a.dueDate - b.dueDate);
+
+  let currentMonth = "";
+  let monthList = null;
+
+  echeances.forEach(t => {
+    const mois = t.dueDate.toLocaleString("fr-FR", { month: "long", year: "numeric" });
+
+    if (mois !== currentMonth) {
+      currentMonth = mois;
+
+      const header = document.createElement("div");
+      header.classList.add("echeance-month");
+      header.textContent = mois.charAt(0).toUpperCase() + mois.slice(1);
+      deadlines.appendChild(header);
+
+      monthList = document.createElement("ul");
+      deadlines.appendChild(monthList);
+    }
+
+    const dl = document.createElement("li");
+    dl.classList.add("echeance-item");
+
+    const dateSpan = document.createElement("span");
+    dateSpan.classList.add("echeance-date");
+    dateSpan.textContent = t.due;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(t.due);
+    dueDate.setHours(0, 0, 0, 0);
+
+    if (dueDate < today) {
+      dateSpan.style.color = "#b00";
+    } else {
+      dateSpan.style.color = "#333";
+    }
+
+    const arrow = document.createElement("span");
+    arrow.classList.add("echeance-arrow");
+    arrow.textContent = "→";
+
+    const titleSpan = document.createElement("span");
+    titleSpan.classList.add("echeance-title");
+    titleSpan.textContent = t.title;
+
+    const hideBtn = document.createElement("button");
+    hideBtn.textContent = "❌";
+    hideBtn.classList.add("delete-btn");
+    hideBtn.onclick = () => {
+      echeancesMasquees.add(t.id);
+      renderTasks();
+    };
+
+    dl.appendChild(dateSpan);
+    dl.appendChild(arrow);
+    dl.appendChild(titleSpan);
+    dl.appendChild(hideBtn);
+
+    monthList.appendChild(dl);
+  });
 }
+
 
 // --- Rendu événements ---
 export async function renderEvents() {
