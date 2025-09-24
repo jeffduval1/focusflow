@@ -1,7 +1,7 @@
 import { dbReady } from "./db.js";
-import { addTask } from "./tasks.js";
-import { addEvent } from "./events.js";
+import { addTask, getTasks, updateTask } from "./tasks.js";
 import { renderTasks, renderEvents } from "./ui.js";
+import { fetchCategories, createCategory, editCategory, removeCategory } from "./categories.js";
 
 // Attendre que DB soit prête
 await dbReady;
@@ -15,31 +15,35 @@ document.querySelector("#taskForm").onsubmit = async (e) => {
   const title = document.querySelector("#taskTitle").value;
   const cote = parseInt(document.querySelector("#taskCote").value);
   const due = document.querySelector("#taskDue").value || null;
-  const category = document.querySelector("#taskCategory").value || null;
+  const categoryId = document.querySelector("#taskCategory").value || null;
 
-  await addTask({ title, cote, due, category });
+  await addTask({ title, cote, due, category: categoryId });
+
   e.target.reset();
-  taskModal.classList.add("hidden"); 
+  taskModal.classList.add("hidden");
 };
 const categorySelect = document.querySelector("#taskCategory");
 const categoryWrapper = document.querySelector("#categoryWrapper");
 
-categorySelect.onchange = () => {
-  const selected = categorySelect.value;
-  if (!selected) return;
+categorySelect.onchange = async () => {
+  const selectedId = categorySelect.value;
+  if (!selectedId) return;
+
+  const cats = await fetchCategories();
+  const cat = cats.find(c => c.id === selectedId);
 
   // Création du badge
   const badge = document.createElement("span");
   badge.classList.add("task-category");
-  badge.textContent = selected;
 
-  // Appliquer la couleur
-  switch (selected) {
-    case "Travail": badge.style.backgroundColor = "#1C2D49"; badge.style.color = "#fff"; break;
-    case "Famille": badge.style.backgroundColor = "#8C3C3C"; badge.style.color = "#fff"; break;
-    case "Maison": badge.style.backgroundColor = "#4B7355"; badge.style.color = "#fff"; break;
-    case "Loisirs": badge.style.backgroundColor = "#B58B00"; badge.style.color = "#000"; break;
-    case "Kung-Fu": badge.style.backgroundColor = "#8046A0"; badge.style.color = "#fff"; break;
+  if (cat) {
+    badge.textContent = cat.name;
+    badge.style.backgroundColor = cat.color;
+    badge.style.color = "#fff";
+  } else {
+    badge.textContent = "Sans catégorie";
+    badge.style.backgroundColor = "#ECECEC";
+    badge.style.color = "#000";
   }
 
   // Bouton ❌
@@ -58,6 +62,7 @@ categorySelect.onchange = () => {
   categoryWrapper.appendChild(badge);
   categoryWrapper.appendChild(removeBtn);
 };
+
 
 
 // Ajouter événement
@@ -89,7 +94,8 @@ const taskModal = document.getElementById("taskModal");
 const openTaskModal = document.getElementById("openTaskModal");
 const closeTaskModal = document.getElementById("closeTaskModal");
 
-openTaskModal.addEventListener("click", () => {
+openTaskModal.addEventListener("click", async () => {
+  await chargerCategoriesDansSelect(); // 🔹 recharge la liste depuis IndexedDB
   taskModal.classList.remove("hidden");
 });
 
@@ -102,4 +108,170 @@ window.addEventListener("click", (e) => {
   if (e.target === taskModal) {
     taskModal.classList.add("hidden");
   }
+});
+
+// Remplir le <select> des catégories
+export async function chargerCategoriesDansSelect() {
+  const select = document.getElementById("taskCategory");
+  select.innerHTML = "";
+
+  // Option "Sans catégorie"
+  const optNone = document.createElement("option");
+  optNone.value = "";
+  optNone.textContent = "Sans catégorie";
+  optNone.classList.add("option-normal");
+  select.appendChild(optNone);
+
+  // Catégories depuis IndexedDB
+  const cats = await fetchCategories();
+  cats.forEach((c, index) => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.name;
+    opt.classList.add("option-normal");
+    select.appendChild(opt);
+
+    // 🔹 Séparateur (sauf après le dernier)
+    if (index < cats.length - 1) {
+      const sep = document.createElement("option");
+      sep.disabled = true;
+      sep.textContent = "────────────────────────";
+      sep.classList.add("option-separator");
+      select.appendChild(sep);
+    }
+  });
+
+  // ✅ applique la classe sur le <select>
+  select.classList.add("task-category-select");
+}
+
+
+
+// --- Gestion modale Catégories ---
+const modalCategories = document.getElementById("modalCategories");
+const btnManageCategories = document.getElementById("btnManageCategories");
+const closeCategories = document.getElementById("closeCategories");
+
+btnManageCategories.addEventListener("click", () => {
+  modalCategories.classList.remove("hidden");
+});
+
+closeCategories.addEventListener("click", () => {
+  modalCategories.classList.add("hidden");
+});
+
+window.addEventListener("click", (e) => {
+  if (e.target === modalCategories) {
+    modalCategories.classList.add("hidden");
+  }
+});
+async function afficherCategories() {
+  const list = document.getElementById("categoriesList");
+  list.innerHTML = "";
+
+  const cats = await fetchCategories();
+  cats.forEach(c => {
+    const li = document.createElement("li");
+
+    // Pastille couleur
+    const colorPreview = document.createElement("span");
+    colorPreview.style.display = "inline-block";
+    colorPreview.style.width = "16px";
+    colorPreview.style.height = "16px";
+    colorPreview.style.marginRight = "8px";
+    colorPreview.style.borderRadius = "3px";
+
+    // Input nom
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = c.name;
+    nameInput.classList.add("cat-name-input");
+
+    // Input couleur
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.value = c.color;
+    colorInput.classList.add("cat-color-input");
+    colorInput.style.marginLeft = "8px";
+
+    // Bouton sauvegarder
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "💾";
+    saveBtn.classList.add("save-cat-btn");
+    saveBtn.style.marginLeft = "8px";
+
+    saveBtn.onclick = async () => {
+      const newName = nameInput.value.trim();
+      const newColor = colorInput.value;
+
+      if (!newName) {
+        alert("Le nom de la catégorie ne peut pas être vide.");
+        return;
+      }
+
+      await editCategory({ ...c, name: newName, color: newColor });
+      afficherCategories(); // rafraîchir
+    };
+    // Bouton suppression
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "❌";
+    deleteBtn.classList.add("delete-cat-btn");
+    deleteBtn.style.marginLeft = "8px";
+
+    deleteBtn.onclick = async () => {
+      if (!confirm(`Supprimer la catégorie "${c.name}" ?`)) return;
+
+      // 1. Supprimer la catégorie en DB
+      await removeCategory(c.id);
+
+      // 2. Mettre à jour toutes les tâches concernées
+      const tasks = await getTasks();
+      for (const task of tasks) {
+        if (task.category === c.id) {
+          task.category = null; // devient Sans catégorie
+          await updateTask(task);
+        }
+      }
+
+      // 3. Rafraîchir l’affichage
+      afficherCategories();
+      renderTasks();
+    };
+
+    // Assemble
+    li.appendChild(colorPreview);
+    li.appendChild(nameInput);
+    li.appendChild(colorInput);
+    li.appendChild(saveBtn);
+    li.appendChild(deleteBtn);
+
+    list.appendChild(li);
+  });
+}
+
+
+btnManageCategories.addEventListener("click", () => {
+  afficherCategories();
+  modalCategories.classList.remove("hidden");
+});
+
+const addCategoryBtn = document.getElementById("addCategoryBtn");
+const newCategoryName = document.getElementById("newCategoryName");
+const newCategoryColor = document.getElementById("newCategoryColor");
+
+addCategoryBtn.addEventListener("click", async () => {
+  const name = newCategoryName.value.trim();
+  const color = newCategoryColor.value;
+
+  if (!name) {
+    alert("Veuillez entrer un nom de catégorie.");
+    return;
+  }
+
+  await createCategory(name, color);
+
+  newCategoryName.value = "";
+  newCategoryColor.value = "#888888";
+
+  afficherCategories();
 });

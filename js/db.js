@@ -13,7 +13,7 @@ request.onupgradeneeded = (e) => {
 };
 
 export let dbReady = new Promise((resolve) => {
-    const request = indexedDB.open("focusflowDB", 1);
+    const request = indexedDB.open("focusflowDB", 2);
   
     request.onupgradeneeded = (e) => {
       db = e.target.result;
@@ -22,6 +22,10 @@ export let dbReady = new Promise((resolve) => {
       }
       if (!db.objectStoreNames.contains("events")) {
         db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains("categories")) {
+        const store = db.createObjectStore("categories", { keyPath: "id" });
+        store.createIndex("name", "name", { unique: false });
       }
     };
   
@@ -72,5 +76,49 @@ export function deleteData(storeName, id) {
     tx.objectStore(storeName).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = (e) => reject(e);
+  });
+}
+// ---- CATEGORIES ----
+export function getCategories() {
+  return new Promise((resolve, reject) => {
+    const request = db.transaction("categories", "readonly")
+      .objectStore("categories")
+      .getAll();
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = (e) => reject(e);
+  });
+}
+
+export function addCategory(cat) {
+  return new Promise((resolve, reject) => {
+    const request = db.transaction("categories", "readwrite")
+      .objectStore("categories")
+      .add(cat);
+
+    request.onsuccess = () => resolve();
+    request.onerror = (e) => reject(e);
+  });
+}
+
+export function updateCategory(cat) {
+  return new Promise((resolve, reject) => {
+    const request = db.transaction("categories", "readwrite")
+      .objectStore("categories")
+      .put(cat);
+
+    request.onsuccess = () => resolve();
+    request.onerror = (e) => reject(e);
+  });
+}
+
+export function deleteCategory(id) {
+  return new Promise((resolve, reject) => {
+    const request = db.transaction("categories", "readwrite")
+      .objectStore("categories")
+      .delete(id);
+
+    request.onsuccess = () => resolve();
+    request.onerror = (e) => reject(e);
   });
 }

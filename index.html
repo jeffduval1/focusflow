@@ -14,9 +14,12 @@
     <header>
         <h1>FocusFlow</h1>
         <div class="header-actions">
+            <button id="btnManageCategories">
+                📂 Gérer les catégories
+              </button>
             <button id="exportBtn">📤 Exporter</button>
             <div class="import-wrapper">
-                <button id="btnImport">📂 Importer ▼</button>
+                <button id="btnImport">📥 Importer ▼</button>
                 <div id="importMenu" class="dropdown hidden">
                     <div class="import-option" data-mode="fusion">
                         🔄 Fusionner 
@@ -93,7 +96,9 @@
           </div>
     </main>
     <script type="module" src="js/main.js"></script>
-     <!-- Modale -->
+     <!-- Modales -->
+
+      <!-- Modale d'ajout de tâche -->
      <div id="taskModal" class="modal hidden">
         <div class="modal-content">
             <span id="closeTaskModal" class="close">&times;</span>
@@ -133,6 +138,21 @@
             </form>
         </div>
     </div>
+
+   <!-- Modale de gestion de catégories -->
+    <div id="modalCategories" class="modal hidden">
+        <div class="modal-content">
+          <span class="close" id="closeCategories">&times;</span>
+          <h2>Gestion des catégories</h2>
+          <ul id="categoriesList"></ul>
+          <div class="add-category">
+            <input type="text" id="newCategoryName" placeholder="Nom de la catégorie">
+            <input type="color" id="newCategoryColor" value="#888888">
+            <button id="addCategoryBtn">Ajouter</button>
+          </div>
+        </div>
+      </div>
+      
 </body>
 
 </html>

@@ -444,3 +444,67 @@ input[type="date"] {
   margin-bottom: 0.3rem;   /* resserré par rapport aux items */
   text-transform: capitalize; /* garde la première lettre en majuscule */
 }
+.task-category-select {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #fff;
+  color: #333;
+  cursor: pointer;
+  min-width: 140px;
+  max-width: 200px;
+}
+
+/* Effet hover/focus */
+.task-category-select:hover,
+.task-category-select:focus {
+  border-color: var(--color-accent, #FFC300);
+  box-shadow: 0 0 4px rgba(0,0,0,0.1);
+  outline: none;
+}
+
+/* Liste déroulante (options) */
+.task-category-select option {
+  padding: 6px 10px;
+  font-size: 14px;
+  background-color: #fff;
+  color: #333;
+}
+
+/* Survol des options */
+.task-category-select option:hover {
+  background-color: #f0f0f0;
+}
+/* Options normales (texte légèrement plus gras) */
+.task-category-select .option-normal {
+  font-weight: 600;   /* semi-bold discret */
+  color: #333;
+}
+
+/* Séparateurs */
+.task-category-select .option-separator {
+  background-color: #f8f8f8;  /* fond gris très clair */
+  color: transparent;;                /* texte gris clair */
+  font-size: 12px;
+  text-align: left;
+  pointer-events: none;
+}
+/* Style du bouton gérer les catégories (comme Export/Import) */
+#btnManageCategories {
+  background: none;
+  border: none;
+  color: #000;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;           /* espace entre icône et texte */
+  padding: 4px 8px;
+}
+
+#btnManageCategories:hover {
+  text-decoration: underline; /* même effet que liens Export/Import */
+}
+

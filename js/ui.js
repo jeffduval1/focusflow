@@ -1,5 +1,6 @@
 import { getTasks, deleteTask, updateTask, addTask } from "./tasks.js";
 import { getEvents, deleteEvent, addEvent } from "./events.js";
+import { fetchCategories } from "./categories.js";
 
 // 🔧 Fonction utilitaire pour construire un <li> de tâche
 function buildTaskItem(t, context = "main") {
@@ -49,23 +50,39 @@ function buildTaskItem(t, context = "main") {
 
   // Menu déroulant pour édition
   const catSelect = document.createElement("select");
-  ["", "Travail", "Famille", "Maison", "Loisirs", "Kung-Fu"].forEach(cat => {
+  catSelect.classList.add("task-category-select");
+
+// Chargement dynamique des catégories
+(async () => {
+  const cats = await fetchCategories();
+
+  // Option vide
+  const optNone = document.createElement("option");
+  optNone.value = "";
+  optNone.textContent = "— Choisir une catégorie —";
+  catSelect.appendChild(optNone);
+
+  cats.forEach((c, index) => {
     const opt = document.createElement("option");
-    opt.value = cat;
-    opt.textContent = cat === "" ? "— Choisir une catégorie —" : cat;
-
-    switch (cat) {
-      case "Travail": opt.style.backgroundColor = "#1C2D49"; opt.style.color = "#fff"; break;
-      case "Famille": opt.style.backgroundColor = "#8C3C3C"; opt.style.color = "#fff"; break;
-      case "Maison":  opt.style.backgroundColor = "#4B7355"; opt.style.color = "#fff"; break;
-      case "Loisirs": opt.style.backgroundColor = "#B58B00"; opt.style.color = "#000"; break;
-      case "Kung-Fu": opt.style.backgroundColor = "#8046A0"; opt.style.color = "#fff"; break;
-      default: opt.style.backgroundColor = "#ECECEC"; opt.style.color = "#000";
-    }
-
-    if (t.category === cat) opt.selected = true;
+    opt.value = c.id;
+    opt.textContent = c.name;
+    if (t.category === c.id) opt.selected = true;
+    opt.classList.add("option-normal"); // 🔹 ajout classe
     catSelect.appendChild(opt);
+  
+    // Ajouter un séparateur sauf après le dernier
+    if (index < cats.length - 1) {
+      const sep = document.createElement("option");
+      sep.disabled = true;
+      sep.textContent = "────────────────────────"; // ligne pleine largeur
+      sep.classList.add("option-separator");
+      catSelect.appendChild(sep);
+    }
   });
+  
+  
+})();
+
   catSelect.classList.add("hidden");
 // --- Échéance ---
 const dueBadge = document.createElement("span");
@@ -84,8 +101,25 @@ right.appendChild(dueBadge);
   editBtn.classList.add("edit-cat-btn");
 
   // État initial
-  categoryBadge.textContent = t.category || "Sans catégorie";
-  applyCategoryStyle(t.category);
+  (async () => {
+    let badgeText = "Sans catégorie";
+    let badgeColor = "#ECECEC";
+    let badgeTextColor = "#000";
+  
+    if (t.category) {
+      const cats = await fetchCategories();
+      const cat = cats.find(c => c.id === t.category);
+      if (cat) {
+        badgeText = cat.name;
+        badgeColor = cat.color;
+        badgeTextColor = "#fff"; // tu pourrais raffiner pour contraste
+      }
+    }
+  
+    categoryBadge.textContent = badgeText;
+    categoryBadge.style.backgroundColor = badgeColor;
+    categoryBadge.style.color = badgeTextColor;
+  })();
   categoryWrapper.appendChild(categoryBadge);
   categoryWrapper.appendChild(editBtn);
   categoryWrapper.appendChild(catSelect);
@@ -163,15 +197,29 @@ document.addEventListener("click", (e) => {
     catSelect.focus();
   };
 
-  catSelect.onchange = () => {
+  catSelect.onchange = async () => {
     t.category = catSelect.value || null;
-    updateTask(t);
-    categoryBadge.textContent = t.category || "Sans catégorie";
-    applyCategoryStyle(t.category);
+    await updateTask(t);
+  
+    if (t.category) {
+      const cats = await fetchCategories();
+      const cat = cats.find(c => c.id === t.category);
+      if (cat) {
+        categoryBadge.textContent = cat.name;
+        categoryBadge.style.backgroundColor = cat.color;
+        categoryBadge.style.color = "#fff";
+      }
+    } else {
+      categoryBadge.textContent = "Sans catégorie";
+      categoryBadge.style.backgroundColor = "#ECECEC";
+      categoryBadge.style.color = "#000";
+    }
+  
     categoryBadge.style.display = "inline-block";
     editBtn.style.display = "inline-block";
     catSelect.classList.add("hidden");
   };
+  
 
   document.addEventListener("click", (e) => {
     if (!categoryWrapper.contains(e.target)) {
