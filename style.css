@@ -381,3 +381,20 @@
   margin-top: 4px;
   z-index: 20;
 }
+.due-badge {
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  background: #eee;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+.due-badge:hover {
+  background: #ddd;
+}
+input[type="date"] {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}

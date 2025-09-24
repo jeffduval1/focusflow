@@ -67,7 +67,17 @@ function buildTaskItem(t, context = "main") {
     catSelect.appendChild(opt);
   });
   catSelect.classList.add("hidden");
+// --- Échéance ---
+const dueBadge = document.createElement("span");
+dueBadge.classList.add("due-badge");
 
+if (t.due) {
+  dueBadge.textContent = `⏳ ${t.due}`;
+} else {
+  dueBadge.textContent = "+ ⏳";  // 👈 icône de plus + sablier
+}
+
+right.appendChild(dueBadge);
   // Bouton ✏️
   const editBtn = document.createElement("button");
   editBtn.textContent = "✏️";
@@ -79,6 +89,54 @@ function buildTaskItem(t, context = "main") {
   categoryWrapper.appendChild(categoryBadge);
   categoryWrapper.appendChild(editBtn);
   categoryWrapper.appendChild(catSelect);
+// --- Input date caché ---
+const dueInput = document.createElement("input");
+dueInput.type = "date";
+dueInput.classList.add("hidden");
+if (t.due) {
+  dueInput.value = t.due;
+}
+
+// Cliquer sur le badge = bascule vers input
+dueBadge.onclick = (e) => {
+  e.stopPropagation();
+  dueBadge.style.display = "none";
+  dueInput.classList.remove("hidden");
+  dueInput.focus();
+};
+
+// Quand la date change
+dueInput.onchange = () => {
+  t.due = dueInput.value || null;
+  updateTask(t);
+
+  if (t.due) {
+    dueBadge.textContent = `⏳ ${t.due}`;
+  } else {
+    dueBadge.textContent = "+ ⏳";
+  }
+
+  dueBadge.style.display = "inline-block";
+  dueInput.classList.add("hidden");
+};
+
+right.appendChild(dueInput);
+// Fermer si clic en dehors
+document.addEventListener("click", (e) => {
+  if (!right.contains(e.target)) {
+    if (dueInput && !dueInput.classList.contains("hidden")) {
+      // Si aucun changement et aucune date choisie
+      if (!dueInput.value) {
+        dueBadge.textContent = "+ ⏳";
+      } else {
+        dueBadge.textContent = `⏳ ${dueInput.value}`;
+      }
+
+      dueBadge.style.display = "inline-block";
+      dueInput.classList.add("hidden");
+    }
+  }
+});
 
   // Actions édition catégorie
   editBtn.onclick = (e) => {
