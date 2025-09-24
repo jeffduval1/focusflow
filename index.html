@@ -139,6 +139,21 @@
         </div>
     </div>
 
+    <!-- Modale de modification d'événement -->
+<div id="eventModal" class="modal hidden">
+    <div class="modal-content">
+      <span id="closeEventModal" class="close">&times;</span>
+      <h2>Modifier un événement</h2>
+      <form id="eventEditForm">
+        <input type="hidden" id="eventId">
+        <input type="text" id="eventEditTitle" placeholder="Nom de l’événement" required>
+        <input type="date" id="eventEditDate" required>
+        <input type="time" id="eventEditTime">
+        <button type="submit">💾 Sauvegarder</button>
+      </form>
+    </div>
+  </div>
+  
    <!-- Modale de gestion de catégories -->
     <div id="modalCategories" class="modal hidden">
         <div class="modal-content">

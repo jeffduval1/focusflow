@@ -355,26 +355,106 @@ export async function renderTasks() {
 }
 
 
+
+
 // --- Rendu événements ---
 export async function renderEvents() {
   const events = await getEvents();
   const ul = document.querySelector("#events ul");
   ul.innerHTML = "";
 
-  events
-    .sort((a, b) => new Date(a.date + " " + a.time) - new Date(b.date + " " + b.time))
-    .forEach((e) => {
-      const li = document.createElement("li");
-      li.textContent = `${e.title} (${e.date} ${e.time || ""})`;
+  // Trier par date croissante
+  const sorted = events
+    .map(ev => ({ ...ev, dateObj: new Date(ev.date + " " + (ev.time || "00:00")) }))
+    .sort((a, b) => a.dateObj - b.dateObj);
 
-      const del = document.createElement("button");
-      del.textContent = "❌";
-      del.onclick = () => deleteEvent(e.id);
-      li.appendChild(del);
+  let currentMonth = "";
+  let monthList = null;
 
-      ul.appendChild(li);
-    });
+  sorted.forEach(ev => {
+    const mois = ev.dateObj.toLocaleString("fr-FR", { month: "long", year: "numeric" });
+
+    if (mois !== currentMonth) {
+      currentMonth = mois;
+
+      const header = document.createElement("div");
+      header.classList.add("echeance-month");
+      header.textContent = mois.charAt(0).toUpperCase() + mois.slice(1);
+      ul.appendChild(header);
+
+      monthList = document.createElement("ul");
+      ul.appendChild(monthList);
+    }
+
+    const li = document.createElement("li");
+    li.classList.add("event-item");
+
+    // --- Ligne du haut ---
+    const topRow = document.createElement("div");
+    topRow.classList.add("event-top");
+
+    // Date
+    const dateSpan = document.createElement("span");
+    dateSpan.classList.add("echeance-date");
+    if (ev.time) {
+      dateSpan.textContent = `${ev.date} à ${ev.time}`;
+    } else {
+      dateSpan.textContent = ev.date;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (ev.dateObj < today) {
+      dateSpan.style.color = "#b00";
+    } else {
+      dateSpan.style.color = "#333";
+    }
+
+    // Bouton édition
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "✏️";
+    editBtn.onclick = () => {
+      document.getElementById("eventId").value = ev.id;
+      document.getElementById("eventEditTitle").value = ev.title;
+      document.getElementById("eventEditDate").value = ev.date;
+      document.getElementById("eventEditTime").value = ev.time || "";
+      document.getElementById("eventModal").classList.remove("hidden");
+    };
+
+    // Bouton suppression
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "❌";
+    delBtn.classList.add("delete-btn");
+    delBtn.onclick = () => deleteEvent(ev.id);
+
+    // Assembler ligne du haut
+    const actions = document.createElement("div");
+    actions.classList.add("event-actions");
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+
+    topRow.appendChild(dateSpan);
+    topRow.appendChild(actions);
+
+    // --- Ligne du bas ---
+    const bottomRow = document.createElement("div");
+    bottomRow.classList.add("event-bottom");
+    bottomRow.textContent = ev.title;
+
+    // Assembler l'élément
+    li.appendChild(topRow);
+    li.appendChild(bottomRow);
+
+    monthList.appendChild(li);
+  });
 }
+
+
+
+
+
+
+
 // --- Menu déroulant pour importation JSON ---
 const importFileInput = document.getElementById("importFile");
 const btnImport = document.getElementById("btnImport");

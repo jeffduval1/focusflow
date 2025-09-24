@@ -1,5 +1,6 @@
 import { dbReady } from "./db.js";
 import { addTask, getTasks, updateTask } from "./tasks.js";
+import { addEvent, updateEvent, deleteEvent } from "./events.js";  
 import { renderTasks, renderEvents } from "./ui.js";
 import { fetchCategories, createCategory, editCategory, removeCategory } from "./categories.js";
 
@@ -275,3 +276,28 @@ addCategoryBtn.addEventListener("click", async () => {
 
   afficherCategories();
 });
+// --- Gestion modale événements ---
+const eventModal = document.getElementById("eventModal");
+const closeEventModal = document.getElementById("closeEventModal");
+const eventEditForm = document.getElementById("eventEditForm");
+
+closeEventModal.addEventListener("click", () => {
+  eventModal.classList.add("hidden");
+});
+
+window.addEventListener("click", (e) => {
+  if (e.target === eventModal) {
+    eventModal.classList.add("hidden");
+  }
+});
+
+eventEditForm.onsubmit = async (e) => {
+  e.preventDefault();
+  const id = parseInt(document.getElementById("eventId").value, 10);
+  const title = document.getElementById("eventEditTitle").value.trim();
+  const date = document.getElementById("eventEditDate").value;
+  const time = document.getElementById("eventEditTime").value || "";
+
+  await updateEvent({ id, title, date, time });
+  eventModal.classList.add("hidden");
+};

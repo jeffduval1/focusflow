@@ -508,3 +508,94 @@ input[type="date"] {
   text-decoration: underline; /* même effet que liens Export/Import */
 }
 
+/* --- Rendez-vous --- */
+.event-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.event-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.event-top .echeance-date {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.event-bottom {
+  margin-top: 0.3rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+/* Boutons édition/suppression plus subtils */
+.event-top button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #666;
+  margin-left: 6px;
+  transition: color 0.2s;
+}
+
+.event-top button:hover {
+  color: var(--color-alert);
+}
+/* Carte de rendez-vous */
+.event-item {
+  display: flex;
+  flex-direction: column;   /* pile verticale */
+  align-items: stretch;
+  padding: 0.8rem;
+  margin-bottom: 0.6rem;
+  background: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+/* Ligne du haut : date + actions */
+.event-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.event-top .echeance-date {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* Ligne du bas : titre */
+.event-bottom {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+/* Icônes discrètes */
+.event-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.event-actions button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.event-actions button:hover {
+  color: var(--color-alert);
+}
+.event-top .echeance-date {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-right: 0.5rem; /* espace avec les icônes */
+}
