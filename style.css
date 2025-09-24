@@ -208,7 +208,8 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.8rem;
+    color: #444; 
     transition: transform 0.2s;
   }
   
@@ -531,20 +532,6 @@ input[type="date"] {
   color: var(--text);
 }
 
-/* Boutons édition/suppression plus subtils */
-.event-top button {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  color: #666;
-  margin-left: 6px;
-  transition: color 0.2s;
-}
-
-.event-top button:hover {
-  color: var(--color-alert);
-}
 /* Carte de rendez-vous */
 .event-item {
   display: flex;
@@ -582,18 +569,7 @@ input[type="date"] {
   gap: 6px;
 }
 
-.event-actions button {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  color: #666;
-  transition: color 0.2s;
-}
 
-.event-actions button:hover {
-  color: var(--color-alert);
-}
 .event-top .echeance-date {
   font-weight: 700;
   font-size: 0.95rem;

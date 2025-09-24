@@ -409,6 +409,7 @@ export async function renderEvents() {
     // Bouton édition
     const editBtn = document.createElement("button");
     editBtn.textContent = "✏️";
+    editBtn.classList.add("edit-cat-btn");
     editBtn.onclick = () => {
       document.getElementById("eventId").value = ev.id;
       document.getElementById("eventEditTitle").value = ev.title;
