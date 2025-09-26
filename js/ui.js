@@ -2,6 +2,19 @@ import { getTasks, deleteTask, updateTask, addTask } from "./tasks.js";
 import { getEvents, deleteEvent, addEvent } from "./events.js";
 import { fetchCategories } from "./categories.js";
 
+function getTextColor(bgColor) {
+  // Supprimer le # si présent
+  const hex = bgColor.replace("#", "");
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+
+  // Formule de luminance relative (perception humaine)
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+
+  // Seuil : > 150 = couleur claire → texte noir, sinon texte blanc
+  return luminance > 150 ? "#000" : "#fff";
+}
 // 🔧 Fonction utilitaire pour construire un <li> de tâche
 function buildTaskItem(t, context = "main") {
   const li = document.createElement("li");
@@ -112,7 +125,7 @@ right.appendChild(dueBadge);
       if (cat) {
         badgeText = cat.name;
         badgeColor = cat.color;
-        badgeTextColor = "#fff"; // tu pourrais raffiner pour contraste
+        badgeTextColor = getTextColor(cat.color); // 👈 calcul automatique
       }
     }
   
@@ -120,6 +133,7 @@ right.appendChild(dueBadge);
     categoryBadge.style.backgroundColor = badgeColor;
     categoryBadge.style.color = badgeTextColor;
   })();
+  
   categoryWrapper.appendChild(categoryBadge);
   categoryWrapper.appendChild(editBtn);
   categoryWrapper.appendChild(catSelect);

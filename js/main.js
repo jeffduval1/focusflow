@@ -1,14 +1,34 @@
 import { dbReady } from "./db.js";
 import { addTask, getTasks, updateTask } from "./tasks.js";
-import { addEvent, updateEvent, deleteEvent } from "./events.js";  
+import { addEvent, updateEvent, deleteEvent } from "./events.js";
 import { renderTasks, renderEvents } from "./ui.js";
 import { fetchCategories, createCategory, editCategory, removeCategory } from "./categories.js";
 
+const categorySelect = document.querySelector("#taskCategory");
+const categoryWrapper = document.querySelector("#categoryWrapper");
 // Attendre que DB soit prête
 await dbReady;
+await migrerVieillesCategories();
 renderTasks();
 renderEvents();
 
+async function migrerVieillesCategories() {
+  const mapping = {
+    "Travail": "cat-travail",
+    "Famille": "cat-famille",
+    "Maison": "cat-maison",
+    "Loisirs": "cat-loisirs",
+    "Kung-Fu": "cat-kungfu"
+  };
+
+  const tasks = await getTasks();
+  for (const task of tasks) {
+    if (mapping[task.category]) {
+      task.category = mapping[task.category];
+      await updateTask(task);
+    }
+  }
+}
 
 // Ajouter tâche
 document.querySelector("#taskForm").onsubmit = async (e) => {
@@ -16,15 +36,21 @@ document.querySelector("#taskForm").onsubmit = async (e) => {
   const title = document.querySelector("#taskTitle").value;
   const cote = parseInt(document.querySelector("#taskCote").value);
   const due = document.querySelector("#taskDue").value || null;
-  const categoryId = document.querySelector("#taskCategory").value || null;
+  const categoryId = categorySelect.value || null;
 
   await addTask({ title, cote, due, category: categoryId });
 
+  // Reset du formulaire
   e.target.reset();
+
+  // ✅ Reset spécifique à la catégorie
+  categoryWrapper.innerHTML = ""; // supprime badge + ❌
+  categorySelect.style.display = "inline-block"; // réaffiche le select
+  categorySelect.value = ""; // revient à "Sans catégorie"
+
   taskModal.classList.add("hidden");
 };
-const categorySelect = document.querySelector("#taskCategory");
-const categoryWrapper = document.querySelector("#categoryWrapper");
+         
 
 categorySelect.onchange = async () => {
   const selectedId = categorySelect.value;
@@ -114,6 +140,10 @@ window.addEventListener("click", (e) => {
 // Remplir le <select> des catégories
 export async function chargerCategoriesDansSelect() {
   const select = document.getElementById("taskCategory");
+  if (!select) {
+    
+    return; 
+  }
   select.innerHTML = "";
 
   // Option "Sans catégorie"
