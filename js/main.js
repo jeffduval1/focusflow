@@ -3,9 +3,12 @@ import { addTask, getTasks, updateTask } from "./tasks.js";
 import { addEvent, updateEvent, deleteEvent } from "./events.js";  
 import { renderTasks, renderEvents } from "./ui.js";
 import { fetchCategories, createCategory, editCategory, removeCategory } from "./categories.js";
-
+import { ensureDefaultWorkspace } from "./workspaces.js";
 // Attendre que DB soit prête
 await dbReady;
+// S'assurer qu'il existe au moins un workspace ("Général")
+// et qu'un currentWorkspaceId est cohérent
+await ensureDefaultWorkspace();
 renderTasks();
 renderEvents();
 initCollapsibleEisenhower();
