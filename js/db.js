@@ -1,45 +1,74 @@
 let db;
 
-const request = indexedDB.open("focusflowDB", 1);
+// Première ouverture (version 3)
+const request = indexedDB.open("focusflowDB", 3);
 
 request.onupgradeneeded = (e) => {
   db = e.target.result;
+
+  // Store tasks
   if (!db.objectStoreNames.contains("tasks")) {
     db.createObjectStore("tasks", { keyPath: "id", autoIncrement: true });
   }
+
+  // Store events
   if (!db.objectStoreNames.contains("events")) {
     db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
+  }
+
+  // Store categories
+  if (!db.objectStoreNames.contains("categories")) {
+    const catStore = db.createObjectStore("categories", { keyPath: "id" });
+    catStore.createIndex("name", "name", { unique: false });
+  }
+
+  // 🔹 Nouveau : store workspaces
+  if (!db.objectStoreNames.contains("workspaces")) {
+    const wsStore = db.createObjectStore("workspaces", { keyPath: "id" });
+    wsStore.createIndex("name", "name", { unique: false });
   }
 };
 
 export let dbReady = new Promise((resolve) => {
-    const request = indexedDB.open("focusflowDB", 2);
-  
-    request.onupgradeneeded = (e) => {
-      db = e.target.result;
-      if (!db.objectStoreNames.contains("tasks")) {
-        db.createObjectStore("tasks", { keyPath: "id", autoIncrement: true });
-      }
-      if (!db.objectStoreNames.contains("events")) {
-        db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
-      }
-      if (!db.objectStoreNames.contains("categories")) {
-        const store = db.createObjectStore("categories", { keyPath: "id" });
-        store.createIndex("name", "name", { unique: false });
-      }
-    };
-  
-    request.onsuccess = (e) => {
-      db = e.target.result;
-      console.log("DB ready");
-      resolve();
-    };
-  });
-  
+  const request = indexedDB.open("focusflowDB", 3);
 
-request.onerror = (e) => {
-  console.error("DB error:", e.target.errorCode);
-};
+  request.onupgradeneeded = (e) => {
+    db = e.target.result;
+
+    // Store tasks
+    if (!db.objectStoreNames.contains("tasks")) {
+      db.createObjectStore("tasks", { keyPath: "id", autoIncrement: true });
+    }
+
+    // Store events
+    if (!db.objectStoreNames.contains("events")) {
+      db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
+    }
+
+    // Store categories
+    if (!db.objectStoreNames.contains("categories")) {
+      const catStore = db.createObjectStore("categories", { keyPath: "id" });
+      catStore.createIndex("name", "name", { unique: false });
+    }
+
+    // 🔹 Nouveau : store workspaces
+    if (!db.objectStoreNames.contains("workspaces")) {
+      const wsStore = db.createObjectStore("workspaces", { keyPath: "id" });
+      wsStore.createIndex("name", "name", { unique: false });
+    }
+  };
+
+  request.onsuccess = (e) => {
+    db = e.target.result;
+    console.log("DB ready (v3)");
+    resolve();
+  };
+
+  request.onerror = (e) => {
+    console.error("DB error:", e.target.errorCode);
+  };
+});
+
 
 export function addData(storeName, data) {
   return new Promise((resolve, reject) => {
@@ -116,6 +145,54 @@ export function deleteCategory(id) {
   return new Promise((resolve, reject) => {
     const request = db.transaction("categories", "readwrite")
       .objectStore("categories")
+      .delete(id);
+
+    request.onsuccess = () => resolve();
+    request.onerror = (e) => reject(e);
+  });
+}
+// ---- WORKSPACES ----
+export function getWorkspaces() {
+  return new Promise((resolve, reject) => {
+    const request = db
+      .transaction("workspaces", "readonly")
+      .objectStore("workspaces")
+      .getAll();
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = (e) => reject(e);
+  });
+}
+
+export function addWorkspace(ws) {
+  return new Promise((resolve, reject) => {
+    const request = db
+      .transaction("workspaces", "readwrite")
+      .objectStore("workspaces")
+      .add(ws);
+
+    request.onsuccess = () => resolve();
+    request.onerror = (e) => reject(e);
+  });
+}
+
+export function updateWorkspace(ws) {
+  return new Promise((resolve, reject) => {
+    const request = db
+      .transaction("workspaces", "readwrite")
+      .objectStore("workspaces")
+      .put(ws);
+
+    request.onsuccess = () => resolve();
+    request.onerror = (e) => reject(e);
+  });
+}
+
+export function deleteWorkspace(id) {
+  return new Promise((resolve, reject) => {
+    const request = db
+      .transaction("workspaces", "readwrite")
+      .objectStore("workspaces")
       .delete(id);
 
     request.onsuccess = () => resolve();
