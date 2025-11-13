@@ -48,7 +48,7 @@
     border-radius: 12px;
     padding: 1rem;
     box-shadow: var(--shadow);
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
   }
   
   ul {
@@ -508,6 +508,35 @@ input[type="date"] {
 #btnManageCategories:hover {
   text-decoration: underline; /* même effet que liens Export/Import */
 }
+
+/* --- Listes Eisenhower collapsables --- */
+
+/* Le titre devient cliquable et porte une petite flèche */
+.eisenhower > h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Flèche par défaut (section ouverte) */
+.eisenhower > h2::after {
+  content: "▾";
+  font-size: 1.5rem;
+  margin-left: 0.5rem;
+}
+
+/* Flèche quand la section est repliée */
+.eisenhower.collapsed > h2::after {
+  content: "▸";
+}
+
+/* On cache la liste quand la section est en mode collapsed */
+.eisenhower.collapsed > ul {
+  display: none;
+}
+
 
 /* --- Rendez-vous --- */
 .event-actions {

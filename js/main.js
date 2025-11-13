@@ -8,7 +8,7 @@ import { fetchCategories, createCategory, editCategory, removeCategory } from ".
 await dbReady;
 renderTasks();
 renderEvents();
-
+initCollapsibleEisenhower();
 
 // Ajouter tâche
 document.querySelector("#taskForm").onsubmit = async (e) => {
@@ -301,3 +301,33 @@ eventEditForm.onsubmit = async (e) => {
   await updateEvent({ id, title, date, time });
   eventModal.classList.add("hidden");
 };
+// Rendre les listes Eisenhower collapsables par rangée (haut = 2, bas = 2)
+function initCollapsibleEisenhower() {
+  const urgentTop = document.getElementById("urgent-list");
+  const importantTop = document.getElementById("important-list");
+  const urgentBottom = document.getElementById("urgent-notimportant-list");
+  const notUrgentBottom = document.getElementById("noturgent-notimportant-list");
+
+  // Petite fonction utilitaire pour lier un header à un groupe de sections
+  const bindRowToggle = (section, groupSections) => {
+    const header = section.querySelector("h2");
+    if (!header) return;
+
+    header.addEventListener("click", () => {
+      // Si la première section du groupe n'est pas encore collapsed,
+      // on collapse tout le groupe, sinon on les ouvre toutes.
+      const shouldCollapse = !groupSections[0].classList.contains("collapsed");
+      groupSections.forEach(sec => {
+        sec.classList.toggle("collapsed", shouldCollapse);
+      });
+    });
+  };
+
+  // 💡 Rangée du haut : 🔥 & ⭐ ensemble
+  bindRowToggle(urgentTop, [urgentTop, importantTop]);
+  bindRowToggle(importantTop, [urgentTop, importantTop]);
+
+  // 💡 Rangée du bas : ⚡ & 💤 ensemble
+  bindRowToggle(urgentBottom, [urgentBottom, notUrgentBottom]);
+  bindRowToggle(notUrgentBottom, [urgentBottom, notUrgentBottom]);
+}
