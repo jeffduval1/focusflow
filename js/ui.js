@@ -1,6 +1,16 @@
 import { getTasks, deleteTask, updateTask, addTask } from "./tasks.js";
 import { getEvents, deleteEvent, addEvent } from "./events.js";
 import { fetchCategories } from "./categories.js";
+import {
+  getAllData,
+  deleteData,
+  getWorkspaces,
+  addWorkspace,
+  getCategories,
+  addCategory,
+} from "./db.js";
+import { ensureDefaultWorkspace, getCurrentWorkspaceId } from "./workspaces.js";
+
 
 // 🔧 Fonction utilitaire pour construire un <li> de tâche
 function buildTaskItem(t, context = "main") {
@@ -467,6 +477,7 @@ document.addEventListener("click", (e) => {
     importMenu.classList.add("hidden");
   }
 });
+
 // Quand on clique sur Fusionner ou Remplacer tout
 document.querySelectorAll(".import-option").forEach(option => {
   option.addEventListener("click", () => {
@@ -493,61 +504,192 @@ importFileInput.addEventListener("change", (e) => {
   reader.readAsText(file);
 });
 
-async function viderBaseDeDonnees() {
-  const tasks = await getTasks();
-  for (let t of tasks) {
-    await deleteTask(t.id);
+// 🔧 Vide complètement les stores concernés (mode "remplacer")
+async function viderBaseDeDonnees({ withWorkspaces, withCategories }) {
+  // TÂCHES (tous workspaces)
+  const allTasks = await getAllData("tasks");
+  for (const t of allTasks) {
+    await deleteData("tasks", t.id);
   }
 
-  const events = await getEvents();
-  for (let e of events) {
-    await deleteEvent(e.id);
+  // ÉVÉNEMENTS (tous workspaces)
+  const allEvents = await getAllData("events");
+  for (const e of allEvents) {
+    await deleteData("events", e.id);
+  }
+
+  if (withCategories) {
+    const allCats = await getAllData("categories");
+    for (const c of allCats) {
+      await deleteData("categories", c.id);
+    }
+  }
+
+  if (withWorkspaces) {
+    const allWs = await getAllData("workspaces");
+    for (const w of allWs) {
+      await deleteData("workspaces", w.id);
+    }
   }
 }
-async function trouverTacheParTitre(titre) {
-  const tasks = await getTasks();
-  return tasks.find(t => t.title === titre) || null;
-}
 
-async function trouverEvenementParTitre(titre) {
-  const events = await getEvents();
-  return events.find(e => e.title === titre) || null;
-}
-
-// 🔧 importer JSON avec fusion/remplacement
+// 🔧 importer JSON avec fusion/remplacement (version multi-flows)
 export async function importerJSON(contenu, mode = "fusion") {
   try {
     const data = JSON.parse(contenu);
 
+    const hasWorkspaces = Array.isArray(data.workspaces);
+    const hasCategories = Array.isArray(data.categories);
+    const hasTasks = Array.isArray(data.tasks);
+    const hasEvents = Array.isArray(data.events);
+
+    // Sécurité : si ancien format { tasks, events } sans workspaces/categories
+    // on ne touche pas aux stores "workspaces" et "categories" en mode "remplacer".
     if (mode === "remplacer") {
-      await viderBaseDeDonnees();
+      await viderBaseDeDonnees({
+        withWorkspaces: !!hasWorkspaces,
+        withCategories: !!hasCategories,
+      });
     }
 
-    if (Array.isArray(data.tasks)) {
-      for (const t of data.tasks) {
-        if (mode === "fusion") {
-          const existante = await trouverTacheParTitre(t.title);
-          if (existante) continue;
+    // ---- WORKSPACES ----
+    const wsIdMap = {}; // id du JSON -> id local
+    let defaultWorkspaceId = null;
+
+    if (hasWorkspaces) {
+      const existingWs = await getWorkspaces();
+
+      if (mode === "fusion") {
+        // On fusionne : on ajoute ceux qui n'existent pas, on garde les existants
+        for (const ws of data.workspaces) {
+          const sameId = existingWs.find(w => w.id === ws.id);
+          if (sameId) {
+            wsIdMap[ws.id] = sameId.id;
+          } else {
+            await addWorkspace(ws);
+            wsIdMap[ws.id] = ws.id;
+          }
         }
-        await addTask(t);
+      } else {
+        // mode "remplacer" : on repart de zéro pour les workspaces (si présents)
+        for (const ws of data.workspaces) {
+          await addWorkspace(ws);
+          wsIdMap[ws.id] = ws.id;
+        }
+      }
+
+      // Choisir un workspace courant par défaut :
+      const allWsAfter = await getWorkspaces();
+      const firstActive = allWsAfter.find(w => !w.archived) || allWsAfter[0];
+      if (firstActive) {
+        defaultWorkspaceId = firstActive.id;
+      } else {
+        const ws = await ensureDefaultWorkspace();
+        defaultWorkspaceId = ws.id;
+      }
+    } else {
+      // Pas de workspaces dans le fichier : on s'appuie sur la logique existante
+      const ws = await ensureDefaultWorkspace();
+      defaultWorkspaceId = ws.id;
+    }
+
+    // ---- CATEGORIES ----
+    if (hasCategories) {
+      const existingCats = await getCategories();
+
+      for (const cat of data.categories) {
+        if (mode === "fusion") {
+          const sameId = existingCats.find(c => c.id === cat.id);
+          if (sameId) continue; // on garde la locale
+        }
+        await addCategory(cat);
       }
     }
 
-    if (Array.isArray(data.events)) {
-      for (const ev of data.events) {
-        if (mode === "fusion") {
-          const existant = await trouverEvenementParTitre(ev.title);
-          if (existant) continue;
+    // ---- TÂCHES ----
+    if (hasTasks) {
+      let existingTasks = await getAllData("tasks");
+
+      for (const raw of data.tasks) {
+        // Workspace cible
+        let targetWsId = defaultWorkspaceId;
+
+        if (raw.workspaceId && wsIdMap[raw.workspaceId]) {
+          targetWsId = wsIdMap[raw.workspaceId];
+        } else if (raw.workspaceId && !hasWorkspaces) {
+          // Ancien fichier : on ignore l'id absent du mapping et on tombe sur defaultWorkspaceId
+          targetWsId = defaultWorkspaceId;
         }
-        await addEvent(ev);
+
+        const t = {
+          ...raw,
+          workspaceId: targetWsId,
+        };
+
+        if (mode === "fusion") {
+          // Détection de doublon : même titre + même workspace + même due
+          const exists = existingTasks.some(
+            ex =>
+              ex.title === t.title &&
+              ex.workspaceId === t.workspaceId &&
+              (ex.due || null) === (t.due || null)
+          );
+          if (exists) continue;
+
+          await addTask(t);
+          existingTasks.push(t);
+        } else {
+          // mode "remplacer" : on importe tout
+          await addTask(t);
+        }
       }
     }
 
+    // ---- ÉVÉNEMENTS ----
+    if (hasEvents) {
+      let existingEvents = await getAllData("events");
+
+      for (const rawEv of data.events) {
+        let targetWsId = defaultWorkspaceId;
+
+        if (rawEv.workspaceId && wsIdMap[rawEv.workspaceId]) {
+          targetWsId = wsIdMap[rawEv.workspaceId];
+        } else if (rawEv.workspaceId && !hasWorkspaces) {
+          targetWsId = defaultWorkspaceId;
+        }
+
+        const ev = {
+          ...rawEv,
+          workspaceId: targetWsId,
+        };
+
+        if (mode === "fusion") {
+          const exists = existingEvents.some(
+            ex =>
+              ex.title === ev.title &&
+              ex.workspaceId === ev.workspaceId &&
+              (ex.date || null) === (ev.date || null) &&
+              (ex.time || "") === (ev.time || "")
+          );
+          if (exists) continue;
+
+          await addEvent(ev);
+          existingEvents.push(ev);
+        } else {
+          await addEvent(ev);
+        }
+      }
+    }
+
+    // Rendu final
     await renderTasks();
     await renderEvents();
 
-    alert(`✅ Import terminé (${mode === "fusion" ? "fusion sans doublons" : "remplacement total"})`);
-
+    alert(
+      `✅ Import terminé (${mode === "fusion"
+        ? "fusion multi-flows sans doublons"
+        : "remplacement total des données concernées"})`
+    );
   } catch (err) {
     console.error("Erreur import:", err);
     alert("❌ Fichier invalide ou erreur d’import.");

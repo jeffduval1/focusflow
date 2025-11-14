@@ -269,17 +269,36 @@ document.querySelector("#eventForm").onsubmit = async (e) => {
   e.target.reset();
 };
 
-// Export / Import
 document.querySelector("#exportBtn").onclick = async () => {
-  const tasks = await (await import("./tasks.js")).getTasks();
-  const events = await (await import("./events.js")).getEvents();
-  const blob = new Blob([JSON.stringify({ tasks, events })], { type: "application/json" });
+  const { getTasks } = await import("./tasks.js");
+  const { getEvents } = await import("./events.js");
+  const { getCategories, getWorkspaces } = await import("./db.js");
+
+  // 🔹 Récupération complète
+  const tasks = await getAllData("tasks");
+  const events = await getAllData("events");
+  const categories = await getCategories();
+  const workspaces = await getWorkspaces();
+
+  const exportData = {
+    version: 2,  // 🔹 pour compatibilité future
+    workspaces,
+    categories,
+    tasks,
+    events
+  };
+
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+    type: "application/json"
+  });
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = "focusflow-data.json";
   a.click();
 };
+
 
 // Gestion de la modale de tâche
 const taskModal = document.getElementById("taskModal");
