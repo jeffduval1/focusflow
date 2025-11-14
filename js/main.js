@@ -1,10 +1,10 @@
-import { dbReady, getAllData, updateData } from "./db.js";
+import { dbReady, getAllData, updateData, updateWorkspace } from "./db.js";
 import { addTask, getTasks, updateTask } from "./tasks.js";
 import { addEvent, updateEvent, deleteEvent } from "./events.js";  
 import { renderTasks, renderEvents } from "./ui.js";
 import { fetchCategories, createCategory, editCategory, removeCategory } from "./categories.js";
-import { ensureDefaultWorkspace, getCurrentWorkspaceId } from "./workspaces.js";
-// 🔹 Migration : assigne un workspaceId aux tâches/événements qui n'en ont pas encore
+import { ensureDefaultWorkspace, getCurrentWorkspaceId, setCurrentWorkspaceId } from "./workspaces.js";
+
 // 🔹 Migration : assigne un workspaceId aux tâches / événements / catégories qui n'en ont pas encore
 async function migrerWorkspaceIdSiNecessaire() {
   const wsId = await getCurrentWorkspaceId();
@@ -13,6 +13,7 @@ async function migrerWorkspaceIdSiNecessaire() {
   const tasks = await getAllData("tasks");
   for (const t of tasks) {
     if (!("workspaceId" in t) || t.workspaceId == null) {
+      t.cote = t.cote ?? 5; // sécurité si données plus anciennes
       t.workspaceId = wsId;
       await updateData("tasks", t);
     }
@@ -37,7 +38,89 @@ async function migrerWorkspaceIdSiNecessaire() {
   }
 }
 
+// 🔵 ÉTAPE 3.2 / 4.1 — Rendu des onglets de workspaces + renommage inline
+async function renderWorkspaceTabs() {
+  const container = document.getElementById("workspaceTabs");
+  if (!container) return;
 
+  const all = await getAllData("workspaces");
+  if (!all || all.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const currentId = await getCurrentWorkspaceId();
+
+  container.innerHTML = "";
+
+  // On filtre les non archivés, sinon on prend tout
+  const active = all.filter(w => !w.archived);
+  const list = active.length > 0 ? active : all;
+
+  list.forEach(ws => {
+    const btn = document.createElement("button");
+    btn.textContent = ws.name;
+    btn.classList.add("workspace-tab");
+    if (ws.id === currentId) {
+      btn.classList.add("active");
+    }
+
+    // ✅ Changer de workspace au clic
+    btn.addEventListener("click", async () => {
+      if (ws.id === currentId) return; // pas de travail inutile
+
+      setCurrentWorkspaceId(ws.id);
+      await renderTasks();
+      await renderEvents();
+      await renderWorkspaceTabs(); // rafraîchir l'état "actif"
+    });
+
+    // ✏️ Renommage inline au double-clic
+    btn.addEventListener("dblclick", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = ws.name;
+      input.classList.add("workspace-tab-edit");
+
+      container.replaceChild(input, btn);
+      input.focus();
+      input.select();
+
+      const finalize = async (save) => {
+        if (!save) {
+          // Annulation → on remet le bouton original
+          container.replaceChild(btn, input);
+          return;
+        }
+
+        const newName = input.value.trim() || ws.name;
+        if (newName !== ws.name) {
+          const updated = { ...ws, name: newName };
+          await updateWorkspace(updated);
+        }
+
+        await renderWorkspaceTabs();
+      };
+
+      input.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          finalize(true);
+        } else if (ev.key === "Escape") {
+          finalize(false);
+        }
+      });
+
+      input.addEventListener("blur", () => {
+        finalize(true);
+      });
+    });
+
+    container.appendChild(btn);
+  });
+}
 
 // Attendre que DB soit prête
 await dbReady;
@@ -45,6 +128,7 @@ await dbReady;
 // et qu'un currentWorkspaceId est cohérent
 await ensureDefaultWorkspace();
 await migrerWorkspaceIdSiNecessaire();
+await renderWorkspaceTabs();
 renderTasks();
 renderEvents();
 initCollapsibleEisenhower();
@@ -62,6 +146,7 @@ document.querySelector("#taskForm").onsubmit = async (e) => {
   e.target.reset();
   taskModal.classList.add("hidden");
 };
+
 const categorySelect = document.querySelector("#taskCategory");
 const categoryWrapper = document.querySelector("#categoryWrapper");
 
@@ -103,8 +188,6 @@ categorySelect.onchange = async () => {
   categoryWrapper.appendChild(removeBtn);
 };
 
-
-
 // Ajouter événement
 document.querySelector("#eventForm").onsubmit = async (e) => {
   e.preventDefault();
@@ -127,7 +210,6 @@ document.querySelector("#exportBtn").onclick = async () => {
   a.download = "focusflow-data.json";
   a.click();
 };
-
 
 // Gestion de la modale de tâche
 const taskModal = document.getElementById("taskModal");
@@ -185,8 +267,6 @@ export async function chargerCategoriesDansSelect() {
   select.classList.add("task-category-select");
 }
 
-
-
 // --- Gestion modale Catégories ---
 const modalCategories = document.getElementById("modalCategories");
 const btnManageCategories = document.getElementById("btnManageCategories");
@@ -205,6 +285,7 @@ window.addEventListener("click", (e) => {
     modalCategories.classList.add("hidden");
   }
 });
+
 async function afficherCategories() {
   const list = document.getElementById("categoriesList");
   list.innerHTML = "";
@@ -252,6 +333,7 @@ async function afficherCategories() {
       await editCategory({ ...c, name: newName, color: newColor });
       afficherCategories(); // rafraîchir
     };
+
     // Bouton suppression
     const deleteBtn = document.createElement("button");
     deleteBtn.textContent = "❌";
@@ -289,7 +371,6 @@ async function afficherCategories() {
   });
 }
 
-
 btnManageCategories.addEventListener("click", () => {
   afficherCategories();
   modalCategories.classList.remove("hidden");
@@ -315,6 +396,7 @@ addCategoryBtn.addEventListener("click", async () => {
 
   afficherCategories();
 });
+
 // --- Gestion modale événements ---
 const eventModal = document.getElementById("eventModal");
 const closeEventModal = document.getElementById("closeEventModal");
@@ -340,6 +422,7 @@ eventEditForm.onsubmit = async (e) => {
   await updateEvent({ id, title, date, time });
   eventModal.classList.add("hidden");
 };
+
 // Rendre les listes Eisenhower collapsables par rangée (haut = 2, bas = 2)
 function initCollapsibleEisenhower() {
   const urgentTop = document.getElementById("urgent-list");
