@@ -1,4 +1,4 @@
-import { dbReady, getAllData, updateData, updateWorkspace } from "./db.js";
+import { dbReady, getAllData, updateData, updateWorkspace, addWorkspace } from "./db.js";
 import { addTask, getTasks, updateTask } from "./tasks.js";
 import { addEvent, updateEvent, deleteEvent } from "./events.js";  
 import { renderTasks, renderEvents } from "./ui.js";
@@ -38,7 +38,7 @@ async function migrerWorkspaceIdSiNecessaire() {
   }
 }
 
-// 🔵 ÉTAPES 3 & 4 — Rendu des onglets de workspaces + renommage + archive
+// 🔵 ÉTAPES 3 & 4 — Rendu des onglets de workspaces + renommage + archive + nouveau flow
 async function renderWorkspaceTabs() {
   const container = document.getElementById("workspaceTabs");
   if (!container) return;
@@ -154,6 +154,42 @@ async function renderWorkspaceTabs() {
 
     container.appendChild(btn);
   });
+
+  // ➕ Bouton "Nouveau flow"
+  const newBtn = document.createElement("button");
+  newBtn.textContent = "+ Nouveau flow";
+  newBtn.classList.add("workspace-tab", "workspace-tab-new");
+
+  newBtn.addEventListener("click", async () => {
+    const allWs = await getAllData("workspaces");
+
+    // Générer un nom par défaut unique : Flow 1, Flow 2, ...
+    const existingNames = new Set(allWs.map(w => w.name));
+    let index = allWs.length + 1;
+    let baseName = "Flow ";
+    let candidate = baseName + index;
+
+    while (existingNames.has(candidate)) {
+      index++;
+      candidate = baseName + index;
+    }
+
+    const newWs = {
+      id: "ws-" + Date.now(),
+      name: candidate,
+      archived: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    await addWorkspace(newWs);
+    setCurrentWorkspaceId(newWs.id);
+
+    await renderTasks();   // affichera (logiquement) rien pour ce workspace
+    await renderEvents();  // idem si tu décides de filtrer plus tard
+    await renderWorkspaceTabs();
+  });
+
+  container.appendChild(newBtn);
 }
 
 // Attendre que DB soit prête
