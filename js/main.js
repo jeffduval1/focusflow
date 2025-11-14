@@ -5,6 +5,7 @@ import { renderTasks, renderEvents } from "./ui.js";
 import { fetchCategories, createCategory, editCategory, removeCategory } from "./categories.js";
 import { ensureDefaultWorkspace, getCurrentWorkspaceId } from "./workspaces.js";
 // 🔹 Migration : assigne un workspaceId aux tâches/événements qui n'en ont pas encore
+// 🔹 Migration : assigne un workspaceId aux tâches / événements / catégories qui n'en ont pas encore
 async function migrerWorkspaceIdSiNecessaire() {
   const wsId = await getCurrentWorkspaceId();
 
@@ -25,7 +26,17 @@ async function migrerWorkspaceIdSiNecessaire() {
       await updateData("events", e);
     }
   }
+
+  // 🔸 CATÉGORIES
+  const categories = await getAllData("categories");
+  for (const c of categories) {
+    if (!("workspaceId" in c) || c.workspaceId == null) {
+      c.workspaceId = wsId;
+      await updateData("categories", c);
+    }
+  }
 }
+
 
 
 // Attendre que DB soit prête
