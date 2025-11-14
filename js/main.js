@@ -38,7 +38,7 @@ async function migrerWorkspaceIdSiNecessaire() {
   }
 }
 
-// 🔵 ÉTAPE 3.2 / 4.1 — Rendu des onglets de workspaces + renommage inline
+// 🔵 ÉTAPES 3 & 4 — Rendu des onglets de workspaces + renommage + archive
 async function renderWorkspaceTabs() {
   const container = document.getElementById("workspaceTabs");
   if (!container) return;
@@ -53,26 +53,33 @@ async function renderWorkspaceTabs() {
 
   container.innerHTML = "";
 
-  // On filtre les non archivés, sinon on prend tout
-  const active = all.filter(w => !w.archived);
-  const list = active.length > 0 ? active : all;
+  // On affiche TOUS les workspaces (archivés inclus),
+  // et on les différencie visuellement par une classe.
+  const list = all;
 
   list.forEach(ws => {
     const btn = document.createElement("button");
     btn.textContent = ws.name;
     btn.classList.add("workspace-tab");
+
     if (ws.id === currentId) {
       btn.classList.add("active");
     }
 
-    // ✅ Changer de workspace au clic
+    if (ws.archived) {
+      btn.classList.add("archived");
+      btn.title = "Flow archivé (clic droit pour désarchiver)";
+    }
+
+    // ✅ Changer de workspace au clic (seulement si non archivé)
     btn.addEventListener("click", async () => {
-      if (ws.id === currentId) return; // pas de travail inutile
+      if (ws.archived) return;       // on ignore les clics sur les archivés
+      if (ws.id === currentId) return;
 
       setCurrentWorkspaceId(ws.id);
       await renderTasks();
       await renderEvents();
-      await renderWorkspaceTabs(); // rafraîchir l'état "actif"
+      await renderWorkspaceTabs();
     });
 
     // ✏️ Renommage inline au double-clic
@@ -91,7 +98,6 @@ async function renderWorkspaceTabs() {
 
       const finalize = async (save) => {
         if (!save) {
-          // Annulation → on remet le bouton original
           container.replaceChild(btn, input);
           return;
         }
@@ -116,6 +122,34 @@ async function renderWorkspaceTabs() {
       input.addEventListener("blur", () => {
         finalize(true);
       });
+    });
+
+    // 📦 Archiver / désarchiver au clic droit
+    btn.addEventListener("contextmenu", async (e) => {
+      e.preventDefault();
+
+      const archiver = !ws.archived;
+      const message = archiver
+        ? `Archiver le flow « ${ws.name} » ?`
+        : `Désarchiver le flow « ${ws.name} » ?`;
+
+      if (!confirm(message)) return;
+
+      const updated = { ...ws, archived: archiver };
+      await updateWorkspace(updated);
+
+      // Si on archive le flow courant, il faut basculer sur un autre actif
+      let currentAfter = await getCurrentWorkspaceId();
+      if (archiver && ws.id === currentAfter) {
+        const othersActifs = all.filter(w => w.id !== ws.id && !w.archived);
+        if (othersActifs.length > 0) {
+          setCurrentWorkspaceId(othersActifs[0].id);
+        }
+        await renderTasks();
+        await renderEvents();
+      }
+
+      await renderWorkspaceTabs();
     });
 
     container.appendChild(btn);
