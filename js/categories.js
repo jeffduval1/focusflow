@@ -1,3 +1,4 @@
+import { getCurrentWorkspaceId } from "./workspaces.js";
 import {
     getCategories as dbGetCategories,
     addCategory as dbAddCategory,
