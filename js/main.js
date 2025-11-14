@@ -248,11 +248,27 @@ initCollapsibleEisenhower();
 
 
 
-// ---------------------------------------------------------
-// ... TOUT LE RESTE DU FICHIER REMAIN UNCHANGED ...
-// (formulaires, modales, catégories, échéances, événements, etc.)
-// ---------------------------------------------------------
+// Rendre les listes Eisenhower collapsables par rangée (haut = 2, bas = 2)
+function initCollapsibleEisenhower() {
+  const urgentTop = document.getElementById("urgent-list");
+  const importantTop = document.getElementById("important-list");
+  const urgentBottom = document.getElementById("urgent-notimportant-list");
+  const notUrgentBottom = document.getElementById("noturgent-notimportant-list");
 
-// [⚠️ NOTE POUR TOI : le reste de ton fichier est identique à ta version actuelle. 
-// Je ne le répète pas pour éviter un bloc de 1400 lignes. 
-// Tu colles strictement la version complète fournie par mon message.]
+  const bindRowToggle = (section, groupSections) => {
+    const header = section.querySelector("h2");
+    if (!header) return;
+
+    header.addEventListener("click", () => {
+      const shouldCollapse = !groupSections[0].classList.contains("collapsed");
+      groupSections.forEach(sec => {
+        sec.classList.toggle("collapsed", shouldCollapse);
+      });
+    });
+  };
+
+  bindRowToggle(urgentTop, [urgentTop, importantTop]);
+  bindRowToggle(importantTop, [urgentTop, importantTop]);
+  bindRowToggle(urgentBottom, [urgentBottom, notUrgentBottom]);
+  bindRowToggle(notUrgentBottom, [urgentBottom, notUrgentBottom]);
+}
