@@ -6,68 +6,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FocusFlow</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@600&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <header>
         <h1>FocusFlow</h1>
         <div class="header-actions">
-            <button id="btnManageCategories">
-                📂 Gérer les catégories
-              </button>
+            <button id="btnManageCategories">📂 Gérer les catégories</button>
             <button id="exportBtn">📤 Exporter</button>
+
             <div class="import-wrapper">
                 <button id="btnImport">📥 Importer ▼</button>
                 <div id="importMenu" class="dropdown hidden">
                     <div class="import-option" data-mode="fusion">
                         🔄 Fusionner 
                         <span class="info" data-info="Ajoute seulement les nouvelles tâches/événements. Si le titre existe déjà, on garde l’existant.">ℹ️</span>
-                      </div>
-                      <div class="import-option" data-mode="remplacer">
+                    </div>
+                    <div class="import-option" data-mode="remplacer">
                         🗑️ Remplacer tout 
                         <span class="info" data-info="Supprime toutes les données actuelles et recharge uniquement celles du fichier importé.">ℹ️</span>
-                      </div>
+                    </div>
                 </div>
                 <input type="file" id="importFile" accept="application/json" hidden>
-              </div>
-              
+            </div>
         </div>
     </header>
 
     <main>
-      <div id="workspaceTabs"></div>
-       <!-- Haut de page : Urgents et Importants -->
-<div class="top-grid">
-<section id="urgent-list" class="eisenhower">
-  <h2>🔥 Urgent & Important</h2>
-  <ul></ul>
-</section>
 
-<section id="important-list" class="eisenhower">
-  <h2>⭐ Important & Non urgent</h2>
-  <ul></ul>
-</section>
+        <!-- 📌 Onglets Workspaces -->
+        <div id="workspaceTabs"></div>
 
-  </div>
+        <!-- 📦 ARCHIVÉS -->
+        <div id="archivedSection" class="archived-block hidden">
+            <h3 id="archivedHeader">📦 Archivés (0)</h3>
+            <div id="archivedList" class="archived-list hidden"></div>
+        </div>
+
+        <!-- Haut de page : Urgents et Importants -->
+        <div class="top-grid">
+            <section id="urgent-list" class="eisenhower">
+                <h2>🔥 Urgent & Important</h2>
+                <ul></ul>
+            </section>
+
+            <section id="important-list" class="eisenhower">
+                <h2>⭐ Important & Non urgent</h2>
+                <ul></ul>
+            </section>
+        </div>
 
         <!-- Colonne centrale et droite -->
         <div class="grid">
+
             <!-- Liste principale -->
             <section id="task-list">
                 <h2>📝 Tâches (cote 10 → 1)</h2>
-            
-                <!-- Bouton pour ouvrir la modale -->
                 <button id="openTaskModal">➕ Nouvelle tâche</button>
-            
-                <!-- Liste -->
                 <ul></ul>
             </section>
-            
 
             <!-- Colonne droite -->
             <aside>
+
                 <section id="deadlines">
                     <h2>⏳ Échéances</h2>
                     <ul></ul>
@@ -83,31 +85,35 @@
                     </form>
                     <ul></ul>
                 </section>
+
             </aside>
         </div>
+
+        <!-- Rangée inférieure -->
         <div class="bottom-grid">
-       <section id="urgent-notimportant-list" class="eisenhower">
-  <h2>⚡ Urgent & Non important</h2>
-  <ul></ul>
-</section>
+            <section id="urgent-notimportant-list" class="eisenhower">
+                <h2>⚡ Urgent & Non important</h2>
+                <ul></ul>
+            </section>
 
-<section id="noturgent-notimportant-list" class="eisenhower">
-  <h2>💤 Non urgent & Non important</h2>
-  <ul></ul>
-</section>
+            <section id="noturgent-notimportant-list" class="eisenhower">
+                <h2>💤 Non urgent & Non important</h2>
+                <ul></ul>
+            </section>
+        </div>
 
-          </div>
     </main>
-    <script type="module" src="js/main.js"></script>
-     <!-- Modales -->
 
-      <!-- Modale d'ajout de tâche -->
-     <div id="taskModal" class="modal hidden">
+    <script type="module" src="js/main.js"></script>
+
+    <!-- Modale d'ajout de tâche -->
+    <div id="taskModal" class="modal hidden">
         <div class="modal-content">
             <span id="closeTaskModal" class="close">&times;</span>
             <h2>Nouvelle tâche</h2>
             <form id="taskForm">
                 <input type="text" id="taskTitle" placeholder="Nom de la tâche" required>
+
                 <select id="taskCote" required>
                     <option value="" disabled selected>Cote (1-10)</option>
                     <option value="10">10</option>
@@ -123,54 +129,46 @@
                 </select>
 
                 <input type="date" id="taskDue">
+
                 <div class="categories">
                     <div id="categoryWrapper">
-                      <select id="taskCategory" required>
-                        <option value="" disabled selected>— Choisir une catégorie —</option>
-                        <option value="Travail" style="background:#1C2D49; color:#fff;">Travail</option>
-                        <option value="Famille" style="background:#8C3C3C; color:#fff;">Famille</option>
-                        <option value="Maison" style="background:#4B7355; color:#fff;">Maison</option>
-                        <option value="Loisirs" style="background:#B58B00; color:#000;">Loisirs</option>
-                        <option value="Kung-Fu" style="background:#8046A0; color:#fff;">Kung-Fu</option>
-                      </select>
+                        <select id="taskCategory" required></select>
                     </div>
-                  </div>
-                  
-                  
+                </div>
+
                 <button type="submit">Ajouter tâche</button>
             </form>
         </div>
     </div>
 
-    <!-- Modale de modification d'événement -->
-<div id="eventModal" class="modal hidden">
-    <div class="modal-content">
-      <span id="closeEventModal" class="close">&times;</span>
-      <h2>Modifier un événement</h2>
-      <form id="eventEditForm">
-        <input type="hidden" id="eventId">
-        <input type="text" id="eventEditTitle" placeholder="Nom de l’événement" required>
-        <input type="date" id="eventEditDate" required>
-        <input type="time" id="eventEditTime">
-        <button type="submit">💾 Sauvegarder</button>
-      </form>
+    <!-- Modale modification événement -->
+    <div id="eventModal" class="modal hidden">
+        <div class="modal-content">
+            <span id="closeEventModal" class="close">&times;</span>
+            <h2>Modifier un événement</h2>
+            <form id="eventEditForm">
+                <input type="hidden" id="eventId">
+                <input type="text" id="eventEditTitle" placeholder="Nom de l’événement" required>
+                <input type="date" id="eventEditDate" required>
+                <input type="time" id="eventEditTime">
+                <button type="submit">💾 Sauvegarder</button>
+            </form>
+        </div>
     </div>
-  </div>
-  
-   <!-- Modale de gestion de catégories -->
+
+    <!-- Modale gestion catégories -->
     <div id="modalCategories" class="modal hidden">
         <div class="modal-content">
-          <span class="close" id="closeCategories">&times;</span>
-          <h2>Gestion des catégories</h2>
-          <ul id="categoriesList"></ul>
-          <div class="add-category">
-            <input type="text" id="newCategoryName" placeholder="Nom de la catégorie">
-            <input type="color" id="newCategoryColor" value="#888888">
-            <button id="addCategoryBtn">Ajouter</button>
-          </div>
+            <span class="close" id="closeCategories">&times;</span>
+            <h2>Gestion des catégories</h2>
+            <ul id="categoriesList"></ul>
+            <div class="add-category">
+                <input type="text" id="newCategoryName" placeholder="Nom de la catégorie">
+                <input type="color" id="newCategoryColor" value="#888888">
+                <button id="addCategoryBtn">Ajouter</button>
+            </div>
         </div>
-      </div>
-      
-</body>
+    </div>
 
+</body>
 </html>
