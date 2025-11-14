@@ -1,14 +1,39 @@
-import { dbReady } from "./db.js";
+import { dbReady, getAllData, updateData } from "./db.js";
 import { addTask, getTasks, updateTask } from "./tasks.js";
 import { addEvent, updateEvent, deleteEvent } from "./events.js";  
 import { renderTasks, renderEvents } from "./ui.js";
 import { fetchCategories, createCategory, editCategory, removeCategory } from "./categories.js";
-import { ensureDefaultWorkspace } from "./workspaces.js";
+import { ensureDefaultWorkspace, getCurrentWorkspaceId } from "./workspaces.js";
+// 🔹 Migration : assigne un workspaceId aux tâches/événements qui n'en ont pas encore
+async function migrerWorkspaceIdSiNecessaire() {
+  const wsId = await getCurrentWorkspaceId();
+
+  // 🔸 TÂCHES
+  const tasks = await getAllData("tasks");
+  for (const t of tasks) {
+    if (!("workspaceId" in t) || t.workspaceId == null) {
+      t.workspaceId = wsId;
+      await updateData("tasks", t);
+    }
+  }
+
+  // 🔸 ÉVÉNEMENTS
+  const events = await getAllData("events");
+  for (const e of events) {
+    if (!("workspaceId" in e) || e.workspaceId == null) {
+      e.workspaceId = wsId;
+      await updateData("events", e);
+    }
+  }
+}
+
+
 // Attendre que DB soit prête
 await dbReady;
 // S'assurer qu'il existe au moins un workspace ("Général")
 // et qu'un currentWorkspaceId est cohérent
 await ensureDefaultWorkspace();
+await migrerWorkspaceIdSiNecessaire();
 renderTasks();
 renderEvents();
 initCollapsibleEisenhower();
