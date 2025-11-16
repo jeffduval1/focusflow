@@ -1,6 +1,6 @@
 import { getTasks, deleteTask, updateTask, addTask } from "./tasks.js";
 import { getEvents, deleteEvent, addEvent } from "./events.js";
-import { fetchCategories } from "./categories.js";
+import { fetchCategories, createCategory, removeCategory } from "./categories.js";
 import {
   getAllData,
   deleteData,
@@ -733,4 +733,97 @@ if (exportBtn) {
       alert("❌ Erreur lors de l’export des données.");
     }
   });
+}
+// ---------------------------------------------------------
+// --- GESTIONNAIRE DE CATÉGORIES (ouvrir / fermer / lister)
+// ---------------------------------------------------------
+
+const btnManageCategories = document.getElementById("btnManageCategories");
+const modalCategories = document.getElementById("modalCategories");
+const closeCategories = document.getElementById("closeCategories");
+
+const categoriesList = document.getElementById("categoriesList");
+const addCategoryBtn = document.getElementById("addCategoryBtn");
+const newCategoryName = document.getElementById("newCategoryName");
+const newCategoryColor = document.getElementById("newCategoryColor");
+
+// --- Affiche la liste actuelle des catégories ---
+async function renderCategoryManager() {
+    const cats = await fetchCategories();
+    categoriesList.innerHTML = "";
+
+    cats.forEach(cat => {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.alignItems = "center";
+        li.style.justifyContent = "space-between";
+        li.style.marginBottom = "6px";
+
+        const left = document.createElement("div");
+        left.style.display = "flex";
+        left.style.alignItems = "center";
+        left.style.gap = "8px";
+
+        const colorBox = document.createElement("span");
+        colorBox.style.width = "20px";
+        colorBox.style.height = "20px";
+        colorBox.style.borderRadius = "4px";
+        colorBox.style.background = cat.color;
+
+        const name = document.createElement("span");
+        name.textContent = cat.name;
+
+        left.appendChild(colorBox);
+        left.appendChild(name);
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "❌";
+        delBtn.style.cursor = "pointer";
+        delBtn.onclick = async () => {
+            await removeCategory(cat.id);
+            await renderCategoryManager();
+            await renderTasks(); // met à jour les badges dans les tâches
+        };
+
+        li.appendChild(left);
+        li.appendChild(delBtn);
+
+        categoriesList.appendChild(li);
+    });
+}
+
+// --- Ouvrir modale ---
+if (btnManageCategories) {
+    btnManageCategories.addEventListener("click", async () => {
+        await renderCategoryManager();
+        modalCategories.classList.remove("hidden");
+    });
+}
+
+// --- Fermer modale ---
+if (closeCategories) {
+    closeCategories.addEventListener("click", () => {
+        modalCategories.classList.add("hidden");
+    });
+}
+
+// --- Ajouter une catégorie ---
+if (addCategoryBtn) {
+    addCategoryBtn.addEventListener("click", async () => {
+        const name = newCategoryName.value.trim();
+        const color = newCategoryColor.value;
+
+        if (!name) {
+            alert("Le nom de la catégorie est requis");
+            return;
+        }
+
+        await createCategory(name, color);
+
+        newCategoryName.value = "";
+        newCategoryColor.value = "#888888";
+
+        await renderCategoryManager();
+        await renderTasks();
+    });
 }
