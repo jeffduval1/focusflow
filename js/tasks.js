@@ -24,8 +24,6 @@ export async function deleteTask(id) {
 }
 
 
-
-
 // Renvoie seulement les tâches du workspace courant
 export async function getTasks() {
   const wsId = await getCurrentWorkspaceId();

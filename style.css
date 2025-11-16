@@ -1,292 +1,291 @@
 :root {
-    --bg: #f5f5f5;
-    --text: #111;
-    --card-bg: #fff;
-    --shadow: 0 2px 6px rgba(0,0,0,0.08);
-  
-    /* Catégories */
-    --travail: #4A6572;
-    --famille: #8C4A53;
-    --maison: #6B8E74;
-    --loisirs: #D4A657;
-    --kungfu: #3B3A82;
-  }
-  
-  body {
-    margin: 0;
-    font-family: 'Inter', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-  }
-  
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--card-bg);
-    padding: 1rem 2rem;
-    box-shadow: var(--shadow);
-  }
-  
-  h1 {
-    font-family: 'Poppins', sans-serif;
-    margin: 0;
-  }
-  
-  main {
-    padding: 1rem;
-  }
-  
+  --bg: #f5f5f5;
+  --text: #111;
+  --card-bg: #fff;
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+
+  /* Catégories */
+  --travail: #4a6572;
+  --famille: #8c4a53;
+  --maison: #6b8e74;
+  --loisirs: #d4a657;
+  --kungfu: #3b3a82;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card-bg);
+  padding: 1rem 2rem;
+  box-shadow: var(--shadow);
+}
+
+h1 {
+  font-family: "Poppins", sans-serif;
+  margin: 0;
+}
+
+main {
+  padding: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+}
+
+section,
+aside {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 0.5rem;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+li {
+  background: var(--bg);
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: var(--travail);
+  color: #fff;
+  font-weight: 600;
+}
+
+.categories {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+}
+
+@media (max-width: 900px) {
   .grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 1rem;
+    grid-template-columns: 1fr;
   }
-  
-  section, aside {
-    background: var(--card-bg);
-    border-radius: 12px;
-    padding: 1rem;
-    box-shadow: var(--shadow);
-    margin-bottom: 0.5rem;
-  }
-  
-  ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-  
-  li {
-    background: var(--bg);
-    margin-bottom: .5rem;
-    padding: .5rem .75rem;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  button {
-    cursor: pointer;
-    border: none;
-    padding: .5rem .75rem;
-    border-radius: 8px;
-    background: var(--travail);
-    color: #fff;
-    font-weight: 600;
-  }
-  
-  .categories {
-    display: flex;
-    gap: .5rem;
-    flex-wrap: wrap;
-    margin: .5rem 0;
-  }
-  
-  @media (max-width: 900px) {
-    .grid {
-      grid-template-columns: 1fr;
-    }
-  }
-  #taskForm button {
+}
+#taskForm button {
   margin-bottom: 1rem;
 }
-#eventForm button{
-    margin-top: 1rem;
+#eventForm button {
+  margin-top: 1rem;
 }
-#openTaskModal{
+#openTaskModal {
   margin-bottom: 1rem;
 }
 .modal {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5); /* opacité sur le fond */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-  
-  
-  .modal.hidden {
-    display: none;
-  }
-  
-  .modal-content {
-    background-color: #fff; /* fond blanc plein */
-    padding: 2rem;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    position: relative;
-    z-index: 1100; /* au-dessus du reste */
-  }
-  
-  
-  .close {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--couleur-principale);
-  }
-  /* Style générique pour radios de catégories */
-.categories label {
-    display: inline-block;
-    margin: 0.25rem;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    color: #fff;
-  }
-  
-  .categories input[type="radio"] {
-    display: none; /* masquer le bouton natif */
-  }
-  
-  /* Couleurs par catégorie */
-  .categories input[value="Travail"] + span,
-  .categories label:has(input[value="Travail"]) {
-    background-color: #1C2D49; /* Bleu-gris foncé */
-  }
-  
-  .categories input[value="Famille"] + span,
-  .categories label:has(input[value="Famille"]) {
-    background-color: #8C3C3C; /* Bourgogne feutré */
-  }
-  
-  .categories input[value="Maison"] + span,
-  .categories label:has(input[value="Maison"]) {
-    background-color: #4B7355; /* Vert feutré */
-  }
-  
-  .categories input[value="Loisirs"] + span,
-  .categories label:has(input[value="Loisirs"]) {
-    background-color: #B58B00; /* Jaune doux */
-  }
-  
-  .categories input[value="Kung-Fu"] + span,
-  .categories label:has(input[value="Kung-Fu"]) {
-    background-color: #8046A0; /* Violet feutré */
-  }
-  
-  /* État sélectionné : bordure plus claire */
-  .categories input[type="radio"]:checked + label,
-  .categories label:has(input[type="radio"]:checked) {
-    outline: 3px solid #fff;
-    outline-offset: 2px;
-  }
-  .task-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-bottom: 1px solid var(--color-light-grey);
-  }
-  
-  .task-left {
-    flex: 1;
-    font-weight: 600;
-  }
-  
-  .task-right {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 250px; /* 👈 largeur fixe pour garder l’alignement */
-    justify-content: flex-end;
-  }
-  
- 
-  
-  .delete-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 0.8rem;
-    color: #444; 
-    transition: transform 0.2s;
-  }
-  
-  .delete-btn:hover {
-    transform: scale(1.2);
-  }
-  #categoryWrapper {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* opacité sur le fond */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
 
-  
-  .remove-cat-btn {
-    background: transparent;
-    border: none;
-    font-size: 1.2rem;
-    cursor: pointer;
-    color: #666;
-    transition: color 0.2s;
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background-color: #fff; /* fond blanc plein */
+  padding: 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1100; /* au-dessus du reste */
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--couleur-principale);
+}
+/* Style générique pour radios de catégories */
+.categories label {
+  display: inline-block;
+  margin: 0.25rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #fff;
+}
+
+.categories input[type="radio"] {
+  display: none; /* masquer le bouton natif */
+}
+
+/* Couleurs par catégorie */
+.categories input[value="Travail"] + span,
+.categories label:has(input[value="Travail"]) {
+  background-color: #1c2d49; /* Bleu-gris foncé */
+}
+
+.categories input[value="Famille"] + span,
+.categories label:has(input[value="Famille"]) {
+  background-color: #8c3c3c; /* Bourgogne feutré */
+}
+
+.categories input[value="Maison"] + span,
+.categories label:has(input[value="Maison"]) {
+  background-color: #4b7355; /* Vert feutré */
+}
+
+.categories input[value="Loisirs"] + span,
+.categories label:has(input[value="Loisirs"]) {
+  background-color: #b58b00; /* Jaune doux */
+}
+
+.categories input[value="Kung-Fu"] + span,
+.categories label:has(input[value="Kung-Fu"]) {
+  background-color: #8046a0; /* Violet feutré */
+}
+
+/* État sélectionné : bordure plus claire */
+.categories input[type="radio"]:checked + label,
+.categories label:has(input[type="radio"]:checked) {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--color-light-grey);
+}
+
+.task-left {
+  flex: 1;
+  font-weight: 600;
+}
+
+.task-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 250px; /* 👈 largeur fixe pour garder l’alignement */
+  justify-content: flex-end;
+}
+
+.delete-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #444;
+  transition: transform 0.2s;
+}
+
+.delete-btn:hover {
+  transform: scale(1.2);
+}
+#categoryWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.remove-cat-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.remove-cat-btn:hover {
+  color: #c00;
+}
+.task-category-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.edit-cat-btn {
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.edit-cat-btn:hover {
+  color: #0077cc;
+}
+.task-category {
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 110px; /* 👈 largeur constante pour toutes les catégories */
+  text-align: center;
+}
+
+.task-category.sans-cat {
+  background-color: #ececec;
+  color: #000;
+}
+.hidden {
+  display: none;
+}
+.top-grid,
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 900px) {
+  .top-grid,
+  .bottom-grid {
+    grid-template-columns: 1fr; /* empilé sur mobile */
   }
-  
-  .remove-cat-btn:hover {
-    color: #c00;
-  }
-  .task-category-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-  
-  .edit-cat-btn {
-    background: transparent;
-    border: none;
-    font-size: 1rem;
-    cursor: pointer;
-    color: #666;
-    transition: color 0.2s;
-  }
-  
-  .edit-cat-btn:hover {
-    color: #0077cc;
-  }
-  .task-category {
-    padding: 0.3rem 0.7rem;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    min-width: 110px; /* 👈 largeur constante pour toutes les catégories */
-    text-align: center;
-  }
-  
-  .task-category.sans-cat {
-    background-color: #ECECEC;
-    color: #000;
-  }
-  .hidden {
-    display: none;
-  }
-  .top-grid, .bottom-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-  
-  @media (max-width: 900px) {
-    .top-grid, .bottom-grid {
-      grid-template-columns: 1fr; /* empilé sur mobile */
-    }
-  }
-  /* Conteneur global : Exporter + Importer en ligne */
+}
+/* Conteneur global : Exporter + Importer en ligne */
 .header-actions {
   display: flex;
   gap: 10px;
-  align-items: center; 
+  align-items: center;
   margin-right: 4rem;
 }
 
@@ -303,7 +302,7 @@
   align-items: center;
   gap: 6px;
   color: black;
-  font-weight: 600; 
+  font-weight: 600;
 }
 
 #exportBtn:hover,
@@ -328,7 +327,7 @@
   border: 1px solid var(--color-light-grey);
   border-radius: 6px;
   margin-top: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   min-width: 220px;
 }
@@ -361,7 +360,7 @@
 .info {
   position: relative;
   cursor: help;
-  font-size: 1.1em; 
+  font-size: 1.1em;
 }
 
 .info:hover::before {
@@ -378,7 +377,7 @@
   white-space: normal;
   width: 220px;
   font-size: 0.85em;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   margin-top: 4px;
   z-index: 20;
 }
@@ -438,11 +437,11 @@ input[type="date"] {
   color: var(--text);
 }
 .echeance-month {
-  font-size: 0.9rem;       /* plus compacte que le texte normal */
-  font-weight: 600;        /* gras mais pas excessif */
-  color: #666;             /* gris moyen, moins contrasté */
-  margin-top: 1rem;        /* petit espace avant chaque mois */
-  margin-bottom: 0.3rem;   /* resserré par rapport aux items */
+  font-size: 0.9rem; /* plus compacte que le texte normal */
+  font-weight: 600; /* gras mais pas excessif */
+  color: #666; /* gris moyen, moins contrasté */
+  margin-top: 1rem; /* petit espace avant chaque mois */
+  margin-bottom: 0.3rem; /* resserré par rapport aux items */
   text-transform: capitalize; /* garde la première lettre en majuscule */
 }
 .task-category-select {
@@ -460,8 +459,8 @@ input[type="date"] {
 /* Effet hover/focus */
 .task-category-select:hover,
 .task-category-select:focus {
-  border-color: var(--color-accent, #FFC300);
-  box-shadow: 0 0 4px rgba(0,0,0,0.1);
+  border-color: var(--color-accent, #ffc300);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
   outline: none;
 }
 
@@ -479,14 +478,14 @@ input[type="date"] {
 }
 /* Options normales (texte légèrement plus gras) */
 .task-category-select .option-normal {
-  font-weight: 600;   /* semi-bold discret */
+  font-weight: 600; /* semi-bold discret */
   color: #333;
 }
 
 /* Séparateurs */
 .task-category-select .option-separator {
-  background-color: #f8f8f8;  /* fond gris très clair */
-  color: transparent;;                /* texte gris clair */
+  background-color: #f8f8f8; /* fond gris très clair */
+  color: transparent; /* texte gris clair */
   font-size: 12px;
   text-align: left;
   pointer-events: none;
@@ -501,7 +500,7 @@ input[type="date"] {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;           /* espace entre icône et texte */
+  gap: 6px; /* espace entre icône et texte */
   padding: 4px 8px;
 }
 
@@ -515,7 +514,6 @@ input[type="date"] {
 .eisenhower > h2 {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   cursor: pointer;
   user-select: none;
 }
@@ -536,7 +534,6 @@ input[type="date"] {
 .eisenhower.collapsed > ul {
   display: none;
 }
-
 
 /* --- Rendez-vous --- */
 .event-actions {
@@ -564,7 +561,7 @@ input[type="date"] {
 /* Carte de rendez-vous */
 .event-item {
   display: flex;
-  flex-direction: column;   /* pile verticale */
+  flex-direction: column; /* pile verticale */
   align-items: stretch;
   padding: 0.8rem;
   margin-bottom: 0.6rem;
@@ -598,9 +595,38 @@ input[type="date"] {
   gap: 6px;
 }
 
-
 .event-top .echeance-date {
   font-weight: 700;
   font-size: 0.95rem;
   margin-right: 0.5rem; /* espace avec les icônes */
+}
+/* Collapse de tâches, échéances et rdv */
+/* Panneaux individuels collapsables */
+#task-list.collapsed > button,
+#task-list.collapsed > ul {
+  display: none;
+}
+
+#deadlines.collapsed > ul {
+  display: none;
+}
+
+#events.collapsed > form,
+#events.collapsed > ul {
+  display: none;
+}
+/* Flèche pour Tâches / Échéances / Rendez-vous (même principe que Eisenhower) */
+#task-list > h2::after,
+#deadlines > h2::after,
+#events > h2::after {
+  content: "▾";            /* ouvert = flèche vers le bas */
+  font-size: 1.5rem;
+  margin-left: 0.5rem;
+}
+
+/* Fermé = flèche vers la droite */
+#task-list.collapsed > h2::after,
+#deadlines.collapsed > h2::after,
+#events.collapsed > h2::after {
+  content: "▸";
 }

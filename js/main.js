@@ -245,7 +245,7 @@ await renderArchivedSection();
 renderTasks();
 renderEvents();
 initCollapsibleEisenhower();
-
+initCollapsiblePanels();
 
 
 // Rendre les listes Eisenhower collapsables par rangée (haut = 2, bas = 2)
@@ -271,4 +271,24 @@ function initCollapsibleEisenhower() {
   bindRowToggle(importantTop, [urgentTop, importantTop]);
   bindRowToggle(urgentBottom, [urgentBottom, notUrgentBottom]);
   bindRowToggle(notUrgentBottom, [urgentBottom, notUrgentBottom]);
+}
+// Rendre les panneaux Tâches / Échéances / Rendez-vous collapsables individuellement
+function initCollapsiblePanels() {
+  const taskSection = document.getElementById("task-list");
+  const deadlinesSection = document.getElementById("deadlines");
+  const eventsSection = document.getElementById("events");
+
+  const makeSingleCollapsible = (section) => {
+    if (!section) return;
+    const header = section.querySelector("h2");
+    if (!header) return;
+
+    header.addEventListener("click", () => {
+      section.classList.toggle("collapsed");
+    });
+  };
+
+  makeSingleCollapsible(taskSection);
+  makeSingleCollapsible(deadlinesSection);
+  makeSingleCollapsible(eventsSection);
 }
