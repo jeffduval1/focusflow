@@ -1,6 +1,6 @@
 import { getTasks, deleteTask, updateTask, addTask } from "./tasks.js";
 import { getEvents, deleteEvent, addEvent } from "./events.js";
-import { fetchCategories, createCategory, removeCategory } from "./categories.js";
+import { fetchCategories, createCategory, removeCategory, editCategory  } from "./categories.js";
 import {
   getAllData,
   deleteData,
@@ -749,48 +749,88 @@ const newCategoryColor = document.getElementById("newCategoryColor");
 
 // --- Affiche la liste actuelle des catégories ---
 async function renderCategoryManager() {
-    const cats = await fetchCategories();
-    categoriesList.innerHTML = "";
+  const cats = await fetchCategories();
+  categoriesList.innerHTML = "";
 
-    cats.forEach(cat => {
-        const li = document.createElement("li");
-        li.style.display = "flex";
-        li.style.alignItems = "center";
-        li.style.justifyContent = "space-between";
-        li.style.marginBottom = "6px";
+  cats.forEach(cat => {
+    const li = document.createElement("li");
+    li.style.display = "flex";
+    li.style.alignItems = "center";
+    li.style.justifyContent = "space-between";
+    li.style.marginBottom = "6px";
 
-        const left = document.createElement("div");
-        left.style.display = "flex";
-        left.style.alignItems = "center";
-        left.style.gap = "8px";
+    // Bloc gauche : color + name (éditables)
+    const left = document.createElement("div");
+    left.style.display = "flex";
+    left.style.alignItems = "center";
+    left.style.gap = "8px";
 
-        const colorBox = document.createElement("span");
-        colorBox.style.width = "20px";
-        colorBox.style.height = "20px";
-        colorBox.style.borderRadius = "4px";
-        colorBox.style.background = cat.color;
+    // Input couleur
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.value = cat.color || "#888888";
+    colorInput.style.width = "32px";
+    colorInput.style.height = "32px";
+    colorInput.style.border = "none";
+    colorInput.style.padding = "0";
+    colorInput.style.background = "transparent";
 
-        const name = document.createElement("span");
-        name.textContent = cat.name;
+    // Input nom
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = cat.name;
+    nameInput.style.flex = "1";
+    nameInput.style.padding = "4px 6px";
+    nameInput.style.borderRadius = "4px";
+    nameInput.style.border = "1px solid #ccc";
 
-        left.appendChild(colorBox);
-        left.appendChild(name);
+    left.appendChild(colorInput);
+    left.appendChild(nameInput);
 
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "❌";
-        delBtn.style.cursor = "pointer";
-        delBtn.onclick = async () => {
-            await removeCategory(cat.id);
-            await renderCategoryManager();
-            await renderTasks(); // met à jour les badges dans les tâches
-        };
+    // Boutons à droite : Sauver + Supprimer
+    const right = document.createElement("div");
+    right.style.display = "flex";
+    right.style.alignItems = "center";
+    right.style.gap = "4px";
 
-        li.appendChild(left);
-        li.appendChild(delBtn);
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "💾";
+    saveBtn.style.cursor = "pointer";
+    saveBtn.title = "Enregistrer les modifications";
+    saveBtn.onclick = async () => {
+      const newName = nameInput.value.trim();
+      const newColor = colorInput.value || "#888888";
 
-        categoriesList.appendChild(li);
-    });
+      if (!newName) {
+        alert("Le nom de la catégorie est requis");
+        return;
+      }
+
+      await editCategory({ ...cat, name: newName, color: newColor });
+      await renderCategoryManager();
+      await renderTasks(); // met à jour les badges dans les tâches
+    };
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "❌";
+    delBtn.style.cursor = "pointer";
+    delBtn.title = "Supprimer la catégorie";
+    delBtn.onclick = async () => {
+      await removeCategory(cat.id);
+      await renderCategoryManager();
+      await renderTasks();
+    };
+
+    right.appendChild(saveBtn);
+    right.appendChild(delBtn);
+
+    li.appendChild(left);
+    li.appendChild(right);
+
+    categoriesList.appendChild(li);
+  });
 }
+
 
 // --- Ouvrir modale ---
 if (btnManageCategories) {
