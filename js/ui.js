@@ -695,3 +695,42 @@ export async function importerJSON(contenu, mode = "fusion") {
     alert("❌ Fichier invalide ou erreur d’import.");
   }
 }
+// --- EXPORT JSON multi-flows ---
+const exportBtn = document.getElementById("exportBtn");
+
+if (exportBtn) {
+  exportBtn.addEventListener("click", async () => {
+    try {
+      // On va chercher TOUTES les données, tous flows confondus
+      const [workspaces, categories, tasks, events] = await Promise.all([
+        getWorkspaces(),              // tous les flows (actifs + archivés)
+        getAllData("categories"),     // toutes les catégories
+        getAllData("tasks"),          // toutes les tâches (pas filtrées par workspace)
+        getAllData("events"),         // tous les rendez-vous
+      ]);
+
+      const payload = {
+        workspaces,
+        categories,
+        tasks,
+        events,
+      };
+
+      const json = JSON.stringify(payload, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      a.href = url;
+      a.download = `focusflow-multiflows-${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Erreur export :", err);
+      alert("❌ Erreur lors de l’export des données.");
+    }
+  });
+}
