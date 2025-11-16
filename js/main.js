@@ -283,6 +283,8 @@ function initCollapsiblePanels() {
     const header = section.querySelector("h2");
     if (!header) return;
 
+    header.style.cursor = "pointer";
+
     header.addEventListener("click", () => {
       section.classList.toggle("collapsed");
     });
