@@ -758,7 +758,7 @@ input[type="date"] {
   display: none;
 }
 
-#deadlines.collapsed > ul {
+#deadlines.collapsed > .deadlines-root {
   display: none;
 }
 

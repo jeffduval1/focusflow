@@ -9,7 +9,7 @@ import {
 } from "./db.js";
 import { addTask, getTasks, updateTask } from "./tasks.js";
 import { addEvent, updateEvent, deleteEvent } from "./events.js";  
-import { renderTasks, renderEvents } from "./ui.js?v=20260329c";
+import { renderTasks, renderEvents } from "./ui.js?v=20260330";
 import { fetchCategories, createCategory, editCategory, removeCategory } from "./categories.js";
 import { ensureDefaultWorkspace, getCurrentWorkspaceId, setCurrentWorkspaceId } from "./workspaces.js";
 

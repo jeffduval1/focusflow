@@ -1,5 +1,5 @@
 import { addData, getAllData, updateData, deleteData } from "./db.js";
-import { renderTasks } from "./ui.js?v=20260329c";
+import { renderTasks } from "./ui.js?v=20260330";
 import { getCurrentWorkspaceId } from "./workspaces.js";
 
 export async function addTask(task) {

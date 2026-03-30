@@ -11,11 +11,43 @@ import {
 } from "./db.js";
 import { ensureDefaultWorkspace, getCurrentWorkspaceId } from "./workspaces.js";
 
+let globalTaskUIClickInstalled = false;
+
+function installGlobalTaskUIClickOnce() {
+  if (globalTaskUIClickInstalled) return;
+  globalTaskUIClickInstalled = true;
+  document.addEventListener("click", (e) => {
+    document.querySelectorAll(".task-item input.task-due-input").forEach((dueInput) => {
+      if (dueInput.classList.contains("hidden")) return;
+      const right = dueInput.closest(".task-right");
+      if (right?.contains(e.target)) return;
+      const badge = right?.querySelector(".due-badge");
+      if (!badge) return;
+      badge.textContent = dueInput.value ? `⏳ ${dueInput.value}` : "+ ⏳";
+      badge.style.display = "inline-block";
+      dueInput.classList.add("hidden");
+    });
+    document.querySelectorAll(".task-item select.task-category-select").forEach((catSelect) => {
+      if (catSelect.classList.contains("hidden")) return;
+      const wrap = catSelect.closest(".task-category-wrapper");
+      if (wrap?.contains(e.target)) return;
+      catSelect.classList.add("hidden");
+      const badge = wrap?.querySelector(".task-category");
+      const editBtn = wrap?.querySelector(".edit-cat-btn");
+      if (badge) badge.style.display = "inline-block";
+      if (editBtn) editBtn.style.display = "inline-block";
+    });
+  });
+}
+
+installGlobalTaskUIClickOnce();
 
 // 🔧 Fonction utilitaire pour construire un <li> de tâche
 function buildTaskItem(t, context = "main") {
   const li = document.createElement("li");
   li.classList.add("task-item");
+  if (t.id != null) li.dataset.taskId = String(t.id);
+  li.dataset.ffMounting = "1";
 
   // Colonne gauche : titre
   const left = document.createElement("div");
@@ -35,10 +67,7 @@ function buildTaskItem(t, context = "main") {
     if (i === t.cote) opt.selected = true;
     select.appendChild(opt);
   }
-  select.onchange = () => {
-    t.cote = parseInt(select.value);
-    updateTask(t);
-  };
+  select.classList.add("task-cote-select");
 
   // --- Catégorie ---
   const categoryWrapper = document.createElement("div");
@@ -64,6 +93,8 @@ function buildTaskItem(t, context = "main") {
 
 // Chargement dynamique des catégories
 (async () => {
+  catSelect.dataset.ffProgrammatic = "1";
+  try {
   const cats = await fetchCategories();
 
   // Option vide
@@ -89,8 +120,9 @@ function buildTaskItem(t, context = "main") {
       catSelect.appendChild(sep);
     }
   });
-  
-  
+  } finally {
+    delete catSelect.dataset.ffProgrammatic;
+  }
 })();
 
   catSelect.classList.add("hidden");
@@ -136,7 +168,7 @@ right.appendChild(dueBadge);
 // --- Input date caché ---
 const dueInput = document.createElement("input");
 dueInput.type = "date";
-dueInput.classList.add("hidden");
+dueInput.classList.add("hidden", "task-due-input");
 if (t.due) {
   dueInput.value = t.due;
 }
@@ -149,54 +181,9 @@ dueBadge.onclick = (e) => {
   dueInput.focus();
 };
 
-// Quand la date change
-dueInput.onchange = () => {
-  appliquerNouvelleEcheance();
-};
-dueInput.onblur = () => {
-  // Même si la valeur est identique, on considère que l'utilisateur a confirmé
-  appliquerNouvelleEcheance();
-};
-
-function appliquerNouvelleEcheance() {
-  t.due = dueInput.value || null;
-  updateTask(t);
-
-  if (t.id) {
-    echeancesMasquees.delete(t.id);
-  }
-
-  if (t.due) {
-    dueBadge.textContent = `⏳ ${t.due}`;
-  } else {
-    dueBadge.textContent = "+ ⏳";
-  }
-
-  dueBadge.style.display = "inline-block";
-  dueInput.classList.add("hidden");
-
-  renderTasks();
-}
-
-
+// Date : gérée par délégation (document) — évite onchange pendant appendChild + double renderTasks
 
 right.appendChild(dueInput);
-// Fermer si clic en dehors
-document.addEventListener("click", (e) => {
-  if (!right.contains(e.target)) {
-    if (dueInput && !dueInput.classList.contains("hidden")) {
-      // Si aucun changement et aucune date choisie
-      if (!dueInput.value) {
-        dueBadge.textContent = "+ ⏳";
-      } else {
-        dueBadge.textContent = `⏳ ${dueInput.value}`;
-      }
-
-      dueBadge.style.display = "inline-block";
-      dueInput.classList.add("hidden");
-    }
-  }
-});
 
   // Actions édition catégorie
   editBtn.onclick = (e) => {
@@ -207,37 +194,7 @@ document.addEventListener("click", (e) => {
     catSelect.focus();
   };
 
-  catSelect.onchange = async () => {
-    t.category = catSelect.value || null;
-    await updateTask(t);
-  
-    if (t.category) {
-      const cats = await fetchCategories();
-      const cat = cats.find(c => c.id === t.category);
-      if (cat) {
-        categoryBadge.textContent = cat.name;
-        categoryBadge.style.backgroundColor = cat.color;
-        categoryBadge.style.color = "#fff";
-      }
-    } else {
-      categoryBadge.textContent = "Sans catégorie";
-      categoryBadge.style.backgroundColor = "#ECECEC";
-      categoryBadge.style.color = "#000";
-    }
-  
-    categoryBadge.style.display = "inline-block";
-    editBtn.style.display = "inline-block";
-    catSelect.classList.add("hidden");
-  };
-  
-
-  document.addEventListener("click", (e) => {
-    if (!categoryWrapper.contains(e.target)) {
-      categoryBadge.style.display = "inline-block";
-      editBtn.style.display = "inline-block";
-      catSelect.classList.add("hidden");
-    }
-  });
+  // Catégorie : délégation document
 
   // --- Bouton suppression ---
 const del = document.createElement("button");
@@ -254,28 +211,82 @@ del.onclick = () => deleteTask(t.id);
   li.appendChild(left);
   li.appendChild(right);
 
+  queueMicrotask(() => {
+    delete li.dataset.ffMounting;
+  });
+
   return li;
 }
 // Registre des échéances masquées (par id de tâche / d'événement)
 let echeancesMasquees = new Set();
 let echeancesMasqueesEvents = new Set();
 
+let taskFieldDelegationInstalled = false;
+
+function installTaskFieldDelegationOnce() {
+  if (taskFieldDelegationInstalled) return;
+  taskFieldDelegationInstalled = true;
+
+  document.addEventListener("change", async (e) => {
+    const el = e.target;
+    if (!(el instanceof HTMLElement)) return;
+
+    const isCote = el.classList.contains("task-cote-select");
+    const isCat = el.classList.contains("task-category-select");
+    const isDue = el.classList.contains("task-due-input");
+    if (!isCote && !isCat && !isDue) return;
+
+    const li = el.closest(".task-item");
+    if (!li?.dataset.taskId) return;
+    if (li.dataset.ffMounting === "1") return;
+    if (isCat && el.dataset.ffProgrammatic === "1") return;
+
+    const taskId = li.dataset.taskId;
+    const tasks = await getTasks();
+    const task = tasks.find((tt) => String(tt.id) === taskId);
+    if (!task) return;
+
+    if (isCote) {
+      task.cote = parseInt(el.value, 10);
+    } else if (isCat) {
+      task.category = el.value || null;
+    } else if (isDue) {
+      task.due = el.value || null;
+      if (task.id != null) echeancesMasquees.delete(task.id);
+    }
+
+    await updateTask(task);
+  });
+}
+
+installTaskFieldDelegationOnce();
+
 // --- Rendu principal ---
 export async function renderTasks() {
-  const tasks = await getTasks();
+  const [tasks, eventsList] = await Promise.all([getTasks(), getEvents()]);
   const urgentList = document.querySelector("#urgent-list ul");
   const importantList = document.querySelector("#important-list ul");
   const urgentNotImportantList = document.querySelector("#urgent-notimportant-list ul");
   const notUrgentNotImportantList = document.querySelector("#noturgent-notimportant-list ul");
   const taskList = document.querySelector("#task-list ul");
-  const deadlines = document.querySelector("#deadlines ul");
+  const deadlines = document.getElementById("deadlinesRoot");
+
+  if (
+    !urgentList ||
+    !importantList ||
+    !urgentNotImportantList ||
+    !notUrgentNotImportantList ||
+    !taskList ||
+    !deadlines
+  ) {
+    return;
+  }
 
   urgentList.innerHTML = "";
   importantList.innerHTML = "";
   urgentNotImportantList.innerHTML = "";
   notUrgentNotImportantList.innerHTML = "";
   taskList.innerHTML = "";
-  deadlines.innerHTML = "";
 
   // --- Quadrants + liste principale
   tasks
@@ -295,8 +306,6 @@ export async function renderTasks() {
     });
 
   // --- Échéances : tâches avec date + rendez-vous (tri chronologique, groupés par mois)
-  const eventsList = await getEvents();
-
   const taskRows = tasks
     .filter((t) => t.due && !echeancesMasquees.has(t.id))
     .map((t) => ({
@@ -319,6 +328,7 @@ export async function renderTasks() {
 
   let currentMonth = "";
   let monthList = null;
+  const deadlineFrag = document.createDocumentFragment();
 
   combined.forEach((item) => {
     const mois = item.sortDate.toLocaleString("fr-FR", {
@@ -332,10 +342,10 @@ export async function renderTasks() {
       const header = document.createElement("div");
       header.classList.add("echeance-month");
       header.textContent = mois.charAt(0).toUpperCase() + mois.slice(1);
-      deadlines.appendChild(header);
+      deadlineFrag.appendChild(header);
 
       monthList = document.createElement("ul");
-      deadlines.appendChild(monthList);
+      deadlineFrag.appendChild(monthList);
     }
 
     const dl = document.createElement("li");
@@ -370,7 +380,7 @@ export async function renderTasks() {
 
       hideBtn.onclick = () => {
         echeancesMasquees.add(t.id);
-        renderTasks();
+        void renderTasks();
       };
     } else {
       const ev = item.event;
@@ -392,7 +402,7 @@ export async function renderTasks() {
 
       hideBtn.onclick = () => {
         echeancesMasqueesEvents.add(ev.id);
-        renderTasks();
+        void renderTasks();
       };
     }
 
@@ -407,6 +417,8 @@ export async function renderTasks() {
 
     monthList.appendChild(dl);
   });
+
+  deadlines.replaceChildren(deadlineFrag);
 }
 
 
