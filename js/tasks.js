@@ -1,6 +1,7 @@
 import { addData, getAllData, updateData, deleteData } from "./db.js";
-import { renderTasks } from "./ui.js?v=20260330";
+import { renderTasks } from "./ui.js?v=20260331";
 import { getCurrentWorkspaceId } from "./workspaces.js";
+import { moveTaskToTrash } from "./trashStore.js";
 
 export async function addTask(task) {
   // Assigner un workspaceId si ce n'est pas déjà fait
@@ -19,7 +20,12 @@ export async function updateTask(task) {
 }
 
 export async function deleteTask(id) {
-  await deleteData("tasks", id);
+  const all = await getAllData("tasks");
+  const task = all.find((t) => t.id === id);
+  if (task) {
+    await moveTaskToTrash(task);
+    await deleteData("tasks", id);
+  }
   await renderTasks();
 }
 

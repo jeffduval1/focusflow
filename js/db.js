@@ -1,74 +1,52 @@
 let db;
 
-// Première ouverture (version 3)
-const request = indexedDB.open("focusflowDB", 3);
+const DB_NAME = "focusflowDB";
+const DB_VERSION = 4;
 
-request.onupgradeneeded = (e) => {
-  db = e.target.result;
-
-  // Store tasks
-  if (!db.objectStoreNames.contains("tasks")) {
-    db.createObjectStore("tasks", { keyPath: "id", autoIncrement: true });
+function ensureStores(database) {
+  if (!database.objectStoreNames.contains("tasks")) {
+    database.createObjectStore("tasks", { keyPath: "id", autoIncrement: true });
   }
-
-  // Store events
-  if (!db.objectStoreNames.contains("events")) {
-    db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
+  if (!database.objectStoreNames.contains("events")) {
+    database.createObjectStore("events", { keyPath: "id", autoIncrement: true });
   }
-
-  // Store categories
-  if (!db.objectStoreNames.contains("categories")) {
-    const catStore = db.createObjectStore("categories", { keyPath: "id" });
+  if (!database.objectStoreNames.contains("categories")) {
+    const catStore = database.createObjectStore("categories", { keyPath: "id" });
     catStore.createIndex("name", "name", { unique: false });
   }
-
-  // 🔹 Nouveau : store workspaces
-  if (!db.objectStoreNames.contains("workspaces")) {
-    const wsStore = db.createObjectStore("workspaces", { keyPath: "id" });
+  if (!database.objectStoreNames.contains("workspaces")) {
+    const wsStore = database.createObjectStore("workspaces", { keyPath: "id" });
     wsStore.createIndex("name", "name", { unique: false });
   }
-};
+  if (!database.objectStoreNames.contains("trashedTasks")) {
+    database.createObjectStore("trashedTasks", { keyPath: "id", autoIncrement: true });
+  }
+  if (!database.objectStoreNames.contains("favoriteColors")) {
+    const fc = database.createObjectStore("favoriteColors", { keyPath: "id", autoIncrement: true });
+    fc.createIndex("byHex", "hex", { unique: true });
+  }
+  if (!database.objectStoreNames.contains("colorArchive")) {
+    database.createObjectStore("colorArchive", { keyPath: "id", autoIncrement: true });
+  }
+}
 
-export let dbReady = new Promise((resolve) => {
-  const request = indexedDB.open("focusflowDB", 3);
+export let dbReady = new Promise((resolve, reject) => {
+  const request = indexedDB.open(DB_NAME, DB_VERSION);
 
   request.onupgradeneeded = (e) => {
-    db = e.target.result;
-
-    // Store tasks
-    if (!db.objectStoreNames.contains("tasks")) {
-      db.createObjectStore("tasks", { keyPath: "id", autoIncrement: true });
-    }
-
-    // Store events
-    if (!db.objectStoreNames.contains("events")) {
-      db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
-    }
-
-    // Store categories
-    if (!db.objectStoreNames.contains("categories")) {
-      const catStore = db.createObjectStore("categories", { keyPath: "id" });
-      catStore.createIndex("name", "name", { unique: false });
-    }
-
-    // 🔹 Nouveau : store workspaces
-    if (!db.objectStoreNames.contains("workspaces")) {
-      const wsStore = db.createObjectStore("workspaces", { keyPath: "id" });
-      wsStore.createIndex("name", "name", { unique: false });
-    }
+    const database = e.target.result;
+    ensureStores(database);
   };
 
   request.onsuccess = (e) => {
     db = e.target.result;
-    console.log("DB ready (v3)");
     resolve();
   };
 
-  request.onerror = (e) => {
-    console.error("DB error:", e.target.errorCode);
+  request.onerror = () => {
+    reject(request.error);
   };
 });
-
 
 export function addData(storeName, data) {
   return new Promise((resolve, reject) => {
@@ -76,17 +54,25 @@ export function addData(storeName, data) {
     const store = tx.objectStore(storeName);
     store.add(data);
     tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export function addDataReturnId(storeName, data) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    const req = tx.objectStore(storeName).add(data);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
 export function getAllData(storeName) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readonly");
-    const store = tx.objectStore(storeName);
-    const req = store.getAll();
+    const req = tx.objectStore(storeName).getAll();
     req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e);
+    req.onerror = () => reject(req.error);
   });
 }
 
@@ -95,7 +81,7 @@ export function updateData(storeName, data) {
     const tx = db.transaction(storeName, "readwrite");
     tx.objectStore(storeName).put(data);
     tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e);
+    tx.onerror = () => reject(tx.error);
   });
 }
 
@@ -104,13 +90,25 @@ export function deleteData(storeName, id) {
     const tx = db.transaction(storeName, "readwrite");
     tx.objectStore(storeName).delete(id);
     tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e);
+    tx.onerror = () => reject(tx.error);
   });
 }
+
+export function getFavoriteByHex(hex) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("favoriteColors", "readonly");
+    const idx = tx.objectStore("favoriteColors").index("byHex");
+    const req = idx.get(hex);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
 // ---- CATEGORIES ----
 export function getCategories() {
   return new Promise((resolve, reject) => {
-    const request = db.transaction("categories", "readonly")
+    const request = db
+      .transaction("categories", "readonly")
       .objectStore("categories")
       .getAll();
 
@@ -121,9 +119,7 @@ export function getCategories() {
 
 export function addCategory(cat) {
   return new Promise((resolve, reject) => {
-    const request = db.transaction("categories", "readwrite")
-      .objectStore("categories")
-      .add(cat);
+    const request = db.transaction("categories", "readwrite").objectStore("categories").add(cat);
 
     request.onsuccess = () => resolve();
     request.onerror = (e) => reject(e);
@@ -132,9 +128,7 @@ export function addCategory(cat) {
 
 export function updateCategory(cat) {
   return new Promise((resolve, reject) => {
-    const request = db.transaction("categories", "readwrite")
-      .objectStore("categories")
-      .put(cat);
+    const request = db.transaction("categories", "readwrite").objectStore("categories").put(cat);
 
     request.onsuccess = () => resolve();
     request.onerror = (e) => reject(e);
@@ -143,9 +137,7 @@ export function updateCategory(cat) {
 
 export function deleteCategory(id) {
   return new Promise((resolve, reject) => {
-    const request = db.transaction("categories", "readwrite")
-      .objectStore("categories")
-      .delete(id);
+    const request = db.transaction("categories", "readwrite").objectStore("categories").delete(id);
 
     request.onsuccess = () => resolve();
     request.onerror = (e) => reject(e);

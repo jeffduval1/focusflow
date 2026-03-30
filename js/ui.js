@@ -10,6 +10,21 @@ import {
   addCategory,
 } from "./db.js";
 import { ensureDefaultWorkspace, getCurrentWorkspaceId } from "./workspaces.js";
+import { normalizeHex } from "./colorNames.js";
+import { createColorControlRow } from "./colorControls.js";
+import {
+  listFavoriteColors,
+  moveFavoriteToArchive,
+  restoreColorFromArchive,
+  permanentDeleteArchivedColor,
+  listArchivedColors,
+} from "./favoritesStore.js";
+import {
+  listTrashedTasks,
+  restoreTaskFromTrash,
+  permanentDeleteTrashedTask,
+  clearAllTrashedTasks,
+} from "./trashStore.js";
 
 let globalTaskUIClickInstalled = false;
 
@@ -80,7 +95,7 @@ function buildTaskItem(t, context = "main") {
   for (let i = 10; i >= 1; i--) {
     const opt = document.createElement("option");
     opt.value = i;
-    opt.textContent = i;
+    opt.textContent = String(i);
     if (i === t.cote) opt.selected = true;
     select.appendChild(opt);
   }
@@ -657,6 +672,16 @@ async function viderBaseDeDonnees({ withWorkspaces, withCategories }) {
       await deleteData("workspaces", w.id);
     }
   }
+
+  for (const r of await getAllData("trashedTasks")) {
+    await deleteData("trashedTasks", r.id);
+  }
+  for (const r of await getAllData("favoriteColors")) {
+    await deleteData("favoriteColors", r.id);
+  }
+  for (const r of await getAllData("colorArchive")) {
+    await deleteData("colorArchive", r.id);
+  }
 }
 
 // 🔧 importer JSON : fusion / import dans le flow actuel / remplacement
@@ -863,18 +888,25 @@ if (exportBtn) {
   exportBtn.addEventListener("click", async () => {
     try {
       // On va chercher TOUTES les données, tous flows confondus
-      const [workspaces, categories, tasks, events] = await Promise.all([
-        getWorkspaces(),              // tous les flows (actifs + archivés)
-        getAllData("categories"),     // toutes les catégories
-        getAllData("tasks"),          // toutes les tâches (pas filtrées par workspace)
-        getAllData("events"),         // tous les rendez-vous
-      ]);
+      const [workspaces, categories, tasks, events, trashedTasks, favoriteColors, colorArchive] =
+        await Promise.all([
+          getWorkspaces(),
+          getAllData("categories"),
+          getAllData("tasks"),
+          getAllData("events"),
+          getAllData("trashedTasks"),
+          getAllData("favoriteColors"),
+          getAllData("colorArchive"),
+        ]);
 
       const payload = {
         workspaces,
         categories,
         tasks,
         events,
+        trashedTasks,
+        favoriteColors,
+        colorArchive,
       };
 
       const json = JSON.stringify(payload, null, 2);
@@ -906,81 +938,228 @@ const closeCategories = document.getElementById("closeCategories");
 const categoriesList = document.getElementById("categoriesList");
 const addCategoryBtn = document.getElementById("addCategoryBtn");
 const newCategoryName = document.getElementById("newCategoryName");
-const newCategoryColor = document.getElementById("newCategoryColor");
+
+let favoriteModalApply = null;
+let addCategoryColorRow = null;
+let taskNewCategoryColorRow = null;
+
+function ensureAddCategoryColorRow() {
+  const mount = document.getElementById("newCategoryColorMount");
+  if (!mount || addCategoryColorRow) return;
+  addCategoryColorRow = createColorControlRow("#888888", {
+    onOpenPalette: (apply) => openFavoriteColorsModal(apply),
+  });
+  mount.appendChild(addCategoryColorRow.wrap);
+}
+
+function ensureTaskNewCategoryColorRow() {
+  const mount = document.getElementById("taskNewCategoryColorMount");
+  if (!mount || taskNewCategoryColorRow) return;
+  taskNewCategoryColorRow = createColorControlRow("#6699aa", {
+    onOpenPalette: (apply) => openFavoriteColorsModal(apply),
+  });
+  mount.appendChild(taskNewCategoryColorRow.wrap);
+}
+
+export function openFavoriteColorsModal(onPick) {
+  favoriteModalApply = onPick;
+  const modal = document.getElementById("favoriteColorsModal");
+  void renderFavoriteColorsModalBody();
+  modal?.classList.remove("hidden");
+}
+
+async function renderFavoriteColorsModalBody() {
+  const body = document.getElementById("favoriteColorsModalBody");
+  const empty = document.getElementById("favoriteColorsEmpty");
+  if (!body || !empty) return;
+  const list = await listFavoriteColors();
+  body.innerHTML = "";
+  if (list.length === 0) {
+    empty.classList.remove("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+  for (const fav of list) {
+    const item = document.createElement("div");
+    item.className = "favorite-color-item";
+
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "favorite-color-card";
+    card.style.setProperty("--fav-swatch", fav.hex);
+
+    const sw = document.createElement("span");
+    sw.className = "favorite-color-swatch";
+    const nm = document.createElement("span");
+    nm.className = "favorite-color-name";
+    nm.textContent = fav.name;
+    const hx = document.createElement("span");
+    hx.className = "favorite-color-hex";
+    hx.textContent = fav.hex;
+    card.appendChild(sw);
+    card.appendChild(nm);
+    card.appendChild(hx);
+    card.addEventListener("click", () => {
+      favoriteModalApply?.(fav.hex);
+      document.getElementById("favoriteColorsModal")?.classList.add("hidden");
+    });
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "btn-favorite-archive";
+    del.textContent = "Retirer des favoris";
+    del.title = "Retire de la liste des favoris (la couleur reste utilisable ailleurs)";
+    del.addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      await moveFavoriteToArchive(fav.id);
+      await renderFavoriteColorsModalBody();
+    });
+
+    item.appendChild(card);
+    item.appendChild(del);
+    body.appendChild(item);
+  }
+}
+
+export async function openTrashModal() {
+  await renderTrashModalContent();
+  document.getElementById("trashModal")?.classList.remove("hidden");
+}
+
+async function renderTrashModalContent() {
+  const tasksUl = document.getElementById("trashTasksList");
+  const colorsUl = document.getElementById("trashColorsList");
+  const emptyT = document.getElementById("trashTasksEmpty");
+  const emptyC = document.getElementById("trashColorsEmpty");
+  if (!tasksUl || !colorsUl) return;
+
+  const tRows = await listTrashedTasks();
+  const cRows = await listArchivedColors();
+
+  tasksUl.innerHTML = "";
+  emptyT.classList.toggle("hidden", tRows.length > 0);
+  for (const row of tRows) {
+    const t = row.taskSnapshot;
+    const li = document.createElement("li");
+    li.className = "trash-item";
+    const title = document.createElement("span");
+    title.className = "trash-item-label";
+    title.textContent = t?.title || "(sans titre)";
+    const actions = document.createElement("div");
+    actions.className = "trash-item-actions";
+    const rest = document.createElement("button");
+    rest.type = "button";
+    rest.className = "btn-trash-restore";
+    rest.textContent = "Restaurer";
+    rest.onclick = async () => {
+      await restoreTaskFromTrash(row.id);
+      await renderTrashModalContent();
+      await renderTasks();
+    };
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "btn-trash-delete";
+    del.textContent = "Supprimer";
+    del.onclick = async () => {
+      if (!confirm("Supprimer définitivement cette tâche ?")) return;
+      await permanentDeleteTrashedTask(row.id);
+      await renderTrashModalContent();
+    };
+    actions.appendChild(rest);
+    actions.appendChild(del);
+    li.appendChild(title);
+    li.appendChild(actions);
+    tasksUl.appendChild(li);
+  }
+
+  colorsUl.innerHTML = "";
+  emptyC.classList.toggle("hidden", cRows.length > 0);
+  for (const row of cRows) {
+    const li = document.createElement("li");
+    li.className = "trash-item trash-item--color";
+    li.style.setProperty("--trash-swatch", row.hex);
+    const label = document.createElement("span");
+    label.className = "trash-item-label";
+    label.textContent = `${row.name} · ${row.hex}`;
+    const actions = document.createElement("div");
+    actions.className = "trash-item-actions";
+    const rest = document.createElement("button");
+    rest.type = "button";
+    rest.className = "btn-trash-restore";
+    rest.textContent = "Restaurer";
+    rest.onclick = async () => {
+      await restoreColorFromArchive(row.id);
+      await renderTrashModalContent();
+    };
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "btn-trash-delete";
+    del.textContent = "Effacer";
+    del.title = "Suppression définitive";
+    del.onclick = async () => {
+      if (!confirm("Supprimer définitivement cette couleur de l’archive ?")) return;
+      await permanentDeleteArchivedColor(row.id);
+      await renderTrashModalContent();
+    };
+    actions.appendChild(rest);
+    actions.appendChild(del);
+    li.appendChild(label);
+    li.appendChild(actions);
+    colorsUl.appendChild(li);
+  }
+}
 
 // --- Affiche la liste actuelle des catégories ---
 async function renderCategoryManager() {
   const cats = await fetchCategories();
   categoriesList.innerHTML = "";
 
-  cats.forEach(cat => {
+  cats.forEach((cat) => {
     const li = document.createElement("li");
-    li.style.display = "flex";
-    li.style.alignItems = "center";
-    li.style.justifyContent = "space-between";
-    li.style.marginBottom = "6px";
+    li.className = "category-edit-row";
 
-    // Bloc gauche : color + name (éditables)
     const left = document.createElement("div");
-    left.style.display = "flex";
-    left.style.alignItems = "center";
-    left.style.gap = "8px";
+    left.className = "category-edit-left";
 
-    // Input couleur
-    const colorInput = document.createElement("input");
-    colorInput.type = "color";
-    colorInput.value = cat.color || "#888888";
-    colorInput.style.width = "32px";
-    colorInput.style.height = "32px";
-    colorInput.style.border = "none";
-    colorInput.style.padding = "0";
-    colorInput.style.background = "transparent";
-
-    // Input nom
     const nameInput = document.createElement("input");
     nameInput.type = "text";
+    nameInput.className = "category-edit-name";
     nameInput.value = cat.name;
-    nameInput.style.flex = "1";
-    nameInput.style.padding = "4px 6px";
-    nameInput.style.borderRadius = "4px";
-    nameInput.style.border = "1px solid #ccc";
 
-    left.appendChild(colorInput);
+    const colorRow = createColorControlRow(cat.color || "#888888", {
+      onOpenPalette: (apply) => openFavoriteColorsModal(apply),
+    });
     left.appendChild(nameInput);
+    left.appendChild(colorRow.wrap);
 
-    // Boutons à droite : Sauver + Supprimer
     const right = document.createElement("div");
-    right.style.display = "flex";
-    right.style.alignItems = "center";
-    right.style.gap = "4px";
+    right.className = "category-edit-actions";
 
     const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
     saveBtn.textContent = "💾";
-    saveBtn.style.cursor = "pointer";
-    saveBtn.title = "Enregistrer les modifications";
-    saveBtn.onclick = async () => {
+    saveBtn.title = "Enregistrer";
+    saveBtn.addEventListener("click", async () => {
       const newName = nameInput.value.trim();
-      const newColor = colorInput.value || "#888888";
-
+      const newColor = colorRow.getHex() || cat.color;
       if (!newName) {
         alert("Le nom de la catégorie est requis");
         return;
       }
-
       await editCategory({ ...cat, name: newName, color: newColor });
       await renderCategoryManager();
-      await renderTasks(); // met à jour les badges dans les tâches
-    };
+      await renderTasks();
+    });
 
     const delBtn = document.createElement("button");
+    delBtn.type = "button";
     delBtn.textContent = "❌";
-    delBtn.style.cursor = "pointer";
-    delBtn.title = "Supprimer la catégorie";
-    delBtn.onclick = async () => {
+    delBtn.title = "Supprimer";
+    delBtn.addEventListener("click", async () => {
       await removeCategory(cat.id);
       await renderCategoryManager();
       await renderTasks();
-    };
+    });
 
     right.appendChild(saveBtn);
     right.appendChild(delBtn);
@@ -992,51 +1171,134 @@ async function renderCategoryManager() {
   });
 }
 
+function syncTaskCategoryMode() {
+  const existing =
+    document.querySelector('input[name="taskCatMode"]:checked')?.value === "existing";
+  document.getElementById("taskCategoryExistingWrap")?.classList.toggle("hidden", !existing);
+  document.getElementById("taskCategoryNewWrap")?.classList.toggle("hidden", existing);
+  const sel = document.getElementById("taskCategory");
+  const nameIn = document.getElementById("taskNewCategoryName");
+  if (existing) {
+    sel?.setAttribute("required", "");
+    nameIn?.removeAttribute("required");
+  } else {
+    sel?.removeAttribute("required");
+    nameIn?.setAttribute("required", "");
+  }
+}
 
 // --- Ouvrir modale ---
 if (btnManageCategories) {
-    btnManageCategories.addEventListener("click", async () => {
-        await renderCategoryManager();
-        modalCategories.classList.remove("hidden");
-    });
+  btnManageCategories.addEventListener("click", async () => {
+    ensureAddCategoryColorRow();
+    await renderCategoryManager();
+    modalCategories.classList.remove("hidden");
+  });
 }
 
 // --- Fermer modale ---
 if (closeCategories) {
-    closeCategories.addEventListener("click", () => {
-        modalCategories.classList.add("hidden");
-    });
+  closeCategories.addEventListener("click", () => {
+    modalCategories.classList.add("hidden");
+  });
 }
 
 // --- Ajouter une catégorie ---
 if (addCategoryBtn) {
-    addCategoryBtn.addEventListener("click", async () => {
-        const name = newCategoryName.value.trim();
-        const color = newCategoryColor.value;
+  addCategoryBtn.addEventListener("click", async () => {
+    const name = newCategoryName.value.trim();
+    ensureAddCategoryColorRow();
+    const color = addCategoryColorRow?.getHex();
 
-        if (!name) {
-            alert("Le nom de la catégorie est requis");
-            return;
-        }
+    if (!name) {
+      alert("Le nom de la catégorie est requis");
+      return;
+    }
+    if (!color) {
+      alert("Indiquez une couleur hex valide");
+      return;
+    }
 
-        await createCategory(name, color);
+    await createCategory(name, color);
 
-        newCategoryName.value = "";
-        newCategoryColor.value = "#888888";
+    newCategoryName.value = "";
+    addCategoryColorRow?.setHex("#888888");
 
-        await renderCategoryManager();
-        await renderTasks();
-    });
+    await renderCategoryManager();
+    await renderTasks();
+  });
 }
 
 // ---------------------------------------------------------
 // --- Modale nouvelle tâche (bouton ➕ + formulaire)
 // ---------------------------------------------------------
+/** Champ cote : bouton = chiffre seul ; liste custom = libellés complets. */
+function syncTaskCoteDisplay() {
+  const hidden = document.getElementById("taskCote");
+  const trigger = document.getElementById("taskCoteTrigger");
+  const menu = document.getElementById("taskCoteMenu");
+  if (!hidden || !trigger) return;
+  const v = hidden.value;
+  trigger.textContent = v ? v : "Choisir…";
+  if (menu) {
+    menu.querySelectorAll('[role="option"]').forEach((li) => {
+      li.setAttribute("aria-selected", li.dataset.value === v ? "true" : "false");
+    });
+  }
+}
+
+function setupTaskCoteCustomDropdown() {
+  const wrap = document.getElementById("taskCoteWrap");
+  const trigger = document.getElementById("taskCoteTrigger");
+  const menu = document.getElementById("taskCoteMenu");
+  const hidden = document.getElementById("taskCote");
+  if (!wrap || !trigger || !menu || !hidden) return;
+
+  function closeMenu() {
+    menu.classList.add("hidden");
+    trigger.setAttribute("aria-expanded", "false");
+  }
+
+  function openMenu() {
+    menu.classList.remove("hidden");
+    trigger.setAttribute("aria-expanded", "true");
+  }
+
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (menu.classList.contains("hidden")) openMenu();
+    else closeMenu();
+  });
+
+  menu.querySelectorAll('[role="option"]').forEach((li) => {
+    li.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const v = li.dataset.value;
+      if (v === undefined) return;
+      hidden.value = v;
+      syncTaskCoteDisplay();
+      closeMenu();
+    });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!wrap.contains(e.target)) closeMenu();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !menu.classList.contains("hidden")) {
+      closeMenu();
+    }
+  });
+}
+
 const openTaskModalBtn = document.getElementById("openTaskModal");
 const taskModal = document.getElementById("taskModal");
 const closeTaskModalEl = document.getElementById("closeTaskModal");
 const taskForm = document.getElementById("taskForm");
 const taskCategorySelect = document.getElementById("taskCategory");
+
+setupTaskCoteCustomDropdown();
 
 async function fillTaskModalCategories() {
   if (!taskCategorySelect) return;
@@ -1059,14 +1321,28 @@ async function fillTaskModalCategories() {
 function closeTaskModal() {
   taskModal?.classList.add("hidden");
   taskForm?.reset();
+  syncTaskCoteDisplay();
+  const existingRadio = document.querySelector('input[name="taskCatMode"][value="existing"]');
+  if (existingRadio) existingRadio.checked = true;
+  syncTaskCategoryMode();
+  const newCatName = document.getElementById("taskNewCategoryName");
+  if (newCatName) newCatName.value = "";
+  taskNewCategoryColorRow?.setHex("#6699aa");
 }
 
 if (openTaskModalBtn && taskModal) {
   openTaskModalBtn.addEventListener("click", async () => {
+    ensureTaskNewCategoryColorRow();
     await fillTaskModalCategories();
+    syncTaskCategoryMode();
+    syncTaskCoteDisplay();
     taskModal.classList.remove("hidden");
   });
 }
+
+document.querySelectorAll('input[name="taskCatMode"]').forEach((r) => {
+  r.addEventListener("change", syncTaskCategoryMode);
+});
 
 if (closeTaskModalEl) {
   closeTaskModalEl.addEventListener("click", closeTaskModal);
@@ -1078,13 +1354,54 @@ if (taskModal) {
   });
 }
 
+document.getElementById("closeFavoriteColorsModal")?.addEventListener("click", () => {
+  document.getElementById("favoriteColorsModal")?.classList.add("hidden");
+});
+
+document.getElementById("favoriteColorsModal")?.addEventListener("click", (e) => {
+  if (e.target?.id === "favoriteColorsModal") {
+    document.getElementById("favoriteColorsModal")?.classList.add("hidden");
+  }
+});
+
+document.getElementById("closeTrashModal")?.addEventListener("click", () => {
+  document.getElementById("trashModal")?.classList.add("hidden");
+});
+
+document.getElementById("trashModal")?.addEventListener("click", (e) => {
+  if (e.target?.id === "trashModal") {
+    document.getElementById("trashModal")?.classList.add("hidden");
+  }
+});
+
+document.getElementById("btnEmptyTrash")?.addEventListener("click", async () => {
+  if (
+    !confirm(
+      "Vider toute la corbeille ? Les tâches et les couleurs archivées seront définitivement supprimées."
+    )
+  ) {
+    return;
+  }
+  await clearAllTrashedTasks();
+  const archived = await listArchivedColors();
+  for (const a of archived) {
+    await permanentDeleteArchivedColor(a.id);
+  }
+  await renderTrashModalContent();
+  await renderTasks();
+});
+
+document.getElementById("btnTrash")?.addEventListener("click", () => {
+  void openTrashModal();
+});
+
 if (taskForm) {
   taskForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const title = document.getElementById("taskTitle")?.value.trim();
     const coteRaw = document.getElementById("taskCote")?.value;
     const due = document.getElementById("taskDue")?.value || null;
-    const category = taskCategorySelect?.value;
+    const mode = document.querySelector('input[name="taskCatMode"]:checked')?.value;
 
     if (!title) {
       alert("Le titre est requis");
@@ -1095,16 +1412,33 @@ if (taskForm) {
       alert("Choisissez une cote");
       return;
     }
-    if (!category) {
-      alert("Choisissez une catégorie");
-      return;
+
+    let categoryId = taskCategorySelect?.value;
+    if (mode === "new") {
+      const n = document.getElementById("taskNewCategoryName")?.value.trim();
+      ensureTaskNewCategoryColorRow();
+      const hex = taskNewCategoryColorRow?.getHex();
+      if (!n) {
+        alert("Indiquez un nom pour la nouvelle catégorie");
+        return;
+      }
+      if (!hex) {
+        alert("Indiquez une couleur hex valide pour la catégorie");
+        return;
+      }
+      categoryId = await createCategory(n, hex);
+    } else {
+      if (!categoryId) {
+        alert("Choisissez une catégorie");
+        return;
+      }
     }
 
     await addTask({
       title,
       cote,
       due,
-      category,
+      category: categoryId,
     });
 
     closeTaskModal();

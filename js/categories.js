@@ -5,6 +5,7 @@ import {
     updateCategory as dbUpdateCategory,
     deleteCategory as dbDeleteCategory
   } from "./db.js";
+import { normalizeHex } from "./colorNames.js";
   
   // 🔹 Catégories par défaut (uniquement utilisées si la DB est vide au démarrage)
   const defaultCategories = [
@@ -27,10 +28,12 @@ export async function fetchCategories() {
     return cats;
   }
   
-  // 🔹 Ajouter une catégorie
+  // 🔹 Ajouter une catégorie — retourne l’id créé
   export async function createCategory(name, color) {
     const id = "cat-" + Date.now();
-    await dbAddCategory({ id, name, color });
+    const hex = normalizeHex(color) || "#888888";
+    await dbAddCategory({ id, name, color: hex });
+    return id;
   }
   
   // 🔹 Modifier une catégorie

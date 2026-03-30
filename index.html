@@ -14,6 +14,10 @@
         <h1>FocusFlow</h1>
         <div class="header-actions">
             <button id="btnManageCategories">📂 Gérer les catégories</button>
+            <button type="button" id="btnTrash" class="header-trash-btn" title="Ouvrir la corbeille">
+                <span class="header-trash-icon" aria-hidden="true">🗑️</span>
+                <span class="header-trash-label">Corbeille</span>
+            </button>
             <button id="exportBtn">📤 Exporter</button>
 
             <div class="import-wrapper">
@@ -66,7 +70,7 @@
 
             <!-- Liste principale -->
             <section id="task-list">
-                <h2>📝 Tâches (cote 10 → 1)</h2>
+                <h2>📝 Tâches (cote : haute → faible importance)</h2>
                 <button id="openTaskModal">➕ Nouvelle tâche</button>
                 <ul></ul>
             </section>
@@ -103,39 +107,68 @@
 
     </main>
 
-    <script type="module" src="js/main.js?v=20260330"></script>
+    <script type="module" src="js/main.js?v=20260331"></script>
 
     <!-- Modale d'ajout de tâche -->
     <div id="taskModal" class="modal hidden">
-        <div class="modal-content">
-            <span id="closeTaskModal" class="close">&times;</span>
-            <h2>Nouvelle tâche</h2>
-            <form id="taskForm">
-                <input type="text" id="taskTitle" placeholder="Nom de la tâche" required>
+        <div class="modal-content modal-content--task">
+            <button type="button" id="closeTaskModal" class="close modal-close" aria-label="Fermer">&times;</button>
+            <h2 class="modal-title">Nouvelle tâche</h2>
+            <form id="taskForm" class="task-form">
+                <div class="form-field">
+                    <label for="taskTitle">Titre</label>
+                    <input type="text" id="taskTitle" placeholder="Ex. Préparer la réunion" required autocomplete="off">
+                </div>
 
-                <select id="taskCote" required>
-                    <option value="" disabled selected>Cote (1-10)</option>
-                    <option value="10">10</option>
-                    <option value="9">9</option>
-                    <option value="8">8</option>
-                    <option value="7">7</option>
-                    <option value="6">6</option>
-                    <option value="5">5</option>
-                    <option value="4">4</option>
-                    <option value="3">3</option>
-                    <option value="2">2</option>
-                    <option value="1">1</option>
-                </select>
-
-                <input type="date" id="taskDue">
-
-                <div class="categories">
-                    <div id="categoryWrapper">
-                        <select id="taskCategory" required></select>
+                <div class="form-row form-row--split">
+                    <div class="form-field">
+                        <label for="taskCoteTrigger" id="taskCoteLabel">Cote</label>
+                        <div class="task-cote-field" id="taskCoteWrap">
+                            <button type="button" id="taskCoteTrigger" class="task-cote-trigger" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="taskCoteLabel">
+                                Choisir…
+                            </button>
+                            <ul id="taskCoteMenu" class="task-cote-menu hidden" role="listbox">
+                                <li role="option" tabindex="0" data-value="10">10 — haute importance</li>
+                                <li role="option" tabindex="-1" data-value="9">9</li>
+                                <li role="option" tabindex="-1" data-value="8">8</li>
+                                <li role="option" tabindex="-1" data-value="7">7</li>
+                                <li role="option" tabindex="-1" data-value="6">6</li>
+                                <li role="option" tabindex="-1" data-value="5">5</li>
+                                <li role="option" tabindex="-1" data-value="4">4</li>
+                                <li role="option" tabindex="-1" data-value="3">3</li>
+                                <li role="option" tabindex="-1" data-value="2">2</li>
+                                <li role="option" tabindex="-1" data-value="1">1 — faible importance</li>
+                            </ul>
+                            <input type="hidden" id="taskCote" value="">
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label for="taskDue">Échéance <span class="form-hint">(facultatif)</span></label>
+                        <input type="date" id="taskDue">
                     </div>
                 </div>
 
-                <button type="submit">Ajouter tâche</button>
+                <fieldset class="task-category-fieldset">
+                    <legend>Catégorie</legend>
+                    <div class="task-cat-mode">
+                        <label class="task-cat-mode-label"><input type="radio" name="taskCatMode" value="existing" checked> Existante</label>
+                        <label class="task-cat-mode-label"><input type="radio" name="taskCatMode" value="new"> Nouvelle</label>
+                    </div>
+                    <div id="taskCategoryExistingWrap" class="form-field">
+                        <label for="taskCategory">Choisir</label>
+                        <select id="taskCategory"></select>
+                    </div>
+                    <div id="taskCategoryNewWrap" class="form-field hidden">
+                        <label for="taskNewCategoryName">Nom de la catégorie</label>
+                        <input type="text" id="taskNewCategoryName" placeholder="Ex. Perso" autocomplete="off">
+                        <label class="label-color-row">Couleur</label>
+                        <div id="taskNewCategoryColorMount"></div>
+                    </div>
+                </fieldset>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-task-submit">Ajouter la tâche</button>
+                </div>
             </form>
         </div>
     </div>
@@ -157,14 +190,51 @@
 
     <!-- Modale gestion catégories -->
     <div id="modalCategories" class="modal hidden">
-        <div class="modal-content">
-            <span class="close" id="closeCategories">&times;</span>
-            <h2>Gestion des catégories</h2>
-            <ul id="categoriesList"></ul>
-            <div class="add-category">
-                <input type="text" id="newCategoryName" placeholder="Nom de la catégorie">
-                <input type="color" id="newCategoryColor" value="#888888">
-                <button id="addCategoryBtn">Ajouter</button>
+        <div class="modal-content modal-content--wide">
+            <button type="button" class="close modal-close" id="closeCategories" aria-label="Fermer">&times;</button>
+            <h2 class="modal-title">Gestion des catégories</h2>
+            <ul id="categoriesList" class="categories-list"></ul>
+            <div class="add-category add-category--block">
+                <label for="newCategoryName">Nouvelle catégorie</label>
+                <input type="text" id="newCategoryName" placeholder="Nom">
+                <label class="label-color-row">Couleur (hex ou pipette)</label>
+                <div id="newCategoryColorMount"></div>
+                <button type="button" id="addCategoryBtn">Ajouter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale couleurs favorites -->
+    <div id="favoriteColorsModal" class="modal hidden">
+        <div class="modal-content modal-content--wide">
+            <button type="button" class="close modal-close" id="closeFavoriteColorsModal" aria-label="Fermer">&times;</button>
+            <h2 class="modal-title">Couleurs favorites</h2>
+            <p class="modal-lead">Cliquez sur une carte pour appliquer la couleur. Retirer des favoris n’enlève pas la couleur des catégories ni des champs — elle disparaît seulement de cette liste (récupérable dans la corbeille si besoin).</p>
+            <div id="favoriteColorsModalBody" class="favorite-colors-grid"></div>
+            <p id="favoriteColorsEmpty" class="form-hint hidden">Aucune couleur favorite pour l’instant.</p>
+        </div>
+    </div>
+
+    <!-- Corbeille -->
+    <div id="trashModal" class="modal hidden">
+        <div class="modal-content modal-content--trash">
+            <button type="button" class="close modal-close" id="closeTrashModal" aria-label="Fermer">&times;</button>
+            <h2 class="modal-title">Corbeille</h2>
+            <p class="modal-lead">Tâches supprimées et couleurs retirées des favoris (archive). Restaurer ou supprimer définitivement.</p>
+            <div class="trash-actions">
+                <button type="button" id="btnEmptyTrash" class="btn-danger-outline">Vider toute la corbeille</button>
+            </div>
+            <div class="trash-columns">
+                <section class="trash-col">
+                    <h3 class="trash-col-title">Tâches</h3>
+                    <ul id="trashTasksList" class="trash-list"></ul>
+                    <p id="trashTasksEmpty" class="form-hint hidden">Aucune tâche.</p>
+                </section>
+                <section class="trash-col">
+                    <h3 class="trash-col-title">Couleurs archivées</h3>
+                    <ul id="trashColorsList" class="trash-list"></ul>
+                    <p id="trashColorsEmpty" class="form-hint hidden">Aucune couleur.</p>
+                </section>
             </div>
         </div>
     </div>

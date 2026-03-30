@@ -1,10 +1,10 @@
 import { addData, getAllData, updateData, deleteData } from "./db.js";
-import { renderEvents } from "./ui.js?v=20260330";
+import { renderEvents } from "./ui.js?v=20260331";
 import { getCurrentWorkspaceId } from "./workspaces.js";  // 🔹 ajout
 
 async function refreshUIAfterEventsChange() {
   await renderEvents();
-  const { renderTasks } = await import("./ui.js?v=20260330");
+  const { renderTasks } = await import("./ui.js?v=20260331");
   await renderTasks();
 }
 
