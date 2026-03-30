@@ -550,9 +550,26 @@ input[type="date"] {
   border: 1px solid #ccc;
 }
 .echeance-date {
-  font-weight: 600;
+  font-weight: 700;
   margin-right: 0.5rem;
-  color: darkred;
+  color: #333;
+  display: inline-block;
+  border-radius: 6px;
+  padding: 0.15rem 0.45rem;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+/* Dépassé : ton froid (rose / rouge bordure) */
+.echeance-date--overdue {
+  color: #7f1d1d;
+  background: #fecaca;
+  border: 1px solid #dc2626;
+}
+/* Dans les 7 jours : ton chaud (ambre / orange bordure) */
+.echeance-date--soon {
+  color: #7c2d12;
+  background: #ffedd5;
+  border: 1px solid #ea580c;
 }
 .echeance-title {
   color: var(--text);
@@ -560,7 +577,7 @@ input[type="date"] {
 /* Chaque ligne d'échéance */
 .echeance-item {
   display: grid;
-  grid-template-columns: 120px 20px 1fr auto; /* date | flèche | titre | bouton */
+  grid-template-columns: max-content 1.25rem 1fr auto; /* date | flèche | titre | bouton */
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0.8rem;
@@ -568,12 +585,6 @@ input[type="date"] {
   background: var(--card-bg);
   border-radius: 8px;
   box-shadow: var(--shadow);
-}
-
-/* Date bien alignée */
-.echeance-date {
-  font-weight: 700;
-  color: #b00; /* rouge foncé par défaut */
 }
 
 /* Flèche toujours collée à la date */

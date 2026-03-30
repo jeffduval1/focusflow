@@ -42,6 +42,23 @@ function installGlobalTaskUIClickOnce() {
 
 installGlobalTaskUIClickOnce();
 
+/** Dépassé → classe --overdue ; dans les 7 jours → --soon ; sinon défaut (gris). */
+function applyEcheanceDateStyle(dateSpan, dayDate) {
+  dateSpan.classList.remove("echeance-date--overdue", "echeance-date--soon");
+  dateSpan.style.removeProperty("color");
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dayDate);
+  d.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((d.getTime() - today.getTime()) / 86400000);
+  if (diffDays < 0) {
+    dateSpan.classList.add("echeance-date--overdue");
+  } else if (diffDays <= 7) {
+    dateSpan.classList.add("echeance-date--soon");
+  }
+}
+
 // 🔧 Fonction utilitaire pour construire un <li> de tâche
 function buildTaskItem(t, context = "main") {
   const li = document.createElement("li");
@@ -354,9 +371,6 @@ export async function renderTasks() {
     const dateSpan = document.createElement("span");
     dateSpan.classList.add("echeance-date");
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const titleSpan = document.createElement("span");
     titleSpan.classList.add("echeance-title");
 
@@ -368,13 +382,7 @@ export async function renderTasks() {
       const t = item.task;
       dateSpan.textContent = t.due;
 
-      const dueDate = new Date(t.due);
-      dueDate.setHours(0, 0, 0, 0);
-      if (dueDate < today) {
-        dateSpan.style.color = "#b00";
-      } else {
-        dateSpan.style.color = "#333";
-      }
+      applyEcheanceDateStyle(dateSpan, t.due);
 
       titleSpan.textContent = t.title;
 
@@ -390,13 +398,7 @@ export async function renderTasks() {
         dateSpan.textContent = ev.date;
       }
 
-      const evDay = new Date(ev.date);
-      evDay.setHours(0, 0, 0, 0);
-      if (evDay < today) {
-        dateSpan.style.color = "#b00";
-      } else {
-        dateSpan.style.color = "#333";
-      }
+      applyEcheanceDateStyle(dateSpan, ev.date);
 
       titleSpan.textContent = `📅 ${ev.title}`;
 
@@ -469,13 +471,7 @@ export async function renderEvents() {
       dateSpan.textContent = ev.date;
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (ev.dateObj < today) {
-      dateSpan.style.color = "#b00";
-    } else {
-      dateSpan.style.color = "#333";
-    }
+    applyEcheanceDateStyle(dateSpan, ev.dateObj);
 
     // Bouton édition
     const editBtn = document.createElement("button");
