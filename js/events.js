@@ -1,6 +1,12 @@
 import { addData, getAllData, updateData, deleteData } from "./db.js";
-import { renderEvents } from "./ui.js";
+import { renderEvents } from "./ui.js?v=20260329c";
 import { getCurrentWorkspaceId } from "./workspaces.js";  // 🔹 ajout
+
+async function refreshUIAfterEventsChange() {
+  await renderEvents();
+  const { renderTasks } = await import("./ui.js?v=20260329c");
+  await renderTasks();
+}
 
 export async function addEvent(event) {
 
@@ -11,19 +17,21 @@ export async function addEvent(event) {
   }
 
   await addData("events", event);
-  await renderEvents();
+  await refreshUIAfterEventsChange();
 }
 
 export async function updateEvent(event) {
   await updateData("events", event);
-  await renderEvents();
+  await refreshUIAfterEventsChange();
 }
 
 export async function deleteEvent(id) {
   await deleteData("events", id);
-  await renderEvents();
+  await refreshUIAfterEventsChange();
 }
 
 export async function getEvents() {
-  return await getAllData("events");
+  const wsId = await getCurrentWorkspaceId();
+  const all = await getAllData("events");
+  return all.filter((e) => e.workspaceId === wsId);
 }

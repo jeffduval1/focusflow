@@ -93,8 +93,9 @@ button {
 #taskForm button {
   margin-bottom: 1rem;
 }
-#eventForm button {
-  margin-top: 1rem;
+#openEventModal {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
 }
 #openTaskModal {
   margin-bottom: 1rem;
@@ -349,6 +350,156 @@ button {
 
 .import-option:hover {
   background: var(--color-light-grey);
+}
+
+/* Sélecteur de flow (même esprit que Importer) */
+#workspaceTabs {
+  margin-bottom: 1rem;
+}
+
+.workspace-flow-wrapper {
+  display: inline-block;
+}
+
+.workspace-flow-trigger {
+  padding: 6px 12px;
+  border: none;
+  background: var(--color-accent, #ffc300);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #000;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.workspace-flow-trigger:hover {
+  background: var(--color-alert, #e85a4f);
+  color: var(--color-white, #fff);
+}
+
+.workspace-flow-menu {
+  min-width: 240px;
+}
+
+.workspace-menu-hint {
+  padding: 6px 12px 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666;
+}
+
+.workspace-menu-item {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.9em;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #111;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.workspace-menu-item:hover {
+  background: var(--color-light-grey, #e8e8e8);
+}
+
+.workspace-menu-item-muted {
+  color: #444;
+}
+
+.workspace-menu-danger {
+  color: #8b2323;
+  font-weight: 600;
+}
+
+.workspace-menu-danger:hover {
+  background: #fdeaea;
+}
+
+.workspace-menu-new {
+  font-weight: 600;
+  color: var(--travail);
+}
+
+.workspace-menu-new:hover {
+  background: var(--color-light-grey, #e8e8e8);
+}
+
+.workspace-menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--color-light-grey, #ddd);
+}
+
+.workspace-flow-trigger-edit {
+  padding: 6px 10px;
+  border: 1px solid var(--color-light-grey, #ccc);
+  border-radius: 6px;
+  font-size: 0.95em;
+  font-weight: 600;
+  min-width: 160px;
+  font-family: inherit;
+}
+
+.archived-block {
+  margin-bottom: 1rem;
+}
+
+.archived-block h3 {
+  cursor: pointer;
+  user-select: none;
+  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.archived-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.archived-row-title {
+  font-weight: 600;
+  flex: 1;
+}
+
+.archived-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.unarchive-btn,
+.archived-delete-btn {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  background: var(--travail);
+  color: #fff;
+}
+
+.archived-delete-btn {
+  background: #8b2323;
+}
+
+.archived-delete-btn:hover {
+  filter: brightness(1.08);
 }
 
 /* Petite icône d’info ℹ️ */
@@ -611,7 +762,7 @@ input[type="date"] {
   display: none;
 }
 
-#events.collapsed > form,
+#events.collapsed > #openEventModal,
 #events.collapsed > ul {
   display: none;
 }

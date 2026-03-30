@@ -1,5 +1,5 @@
 import { getTasks, deleteTask, updateTask, addTask } from "./tasks.js";
-import { getEvents, deleteEvent, addEvent } from "./events.js";
+import { getEvents, deleteEvent, addEvent, updateEvent } from "./events.js";
 import { fetchCategories, createCategory, removeCategory, editCategory  } from "./categories.js";
 import {
   getAllData,
@@ -256,8 +256,9 @@ del.onclick = () => deleteTask(t.id);
 
   return li;
 }
-// Registre des échéances masquées (par id de tâche)
+// Registre des échéances masquées (par id de tâche / d'événement)
 let echeancesMasquees = new Set();
+let echeancesMasqueesEvents = new Set();
 
 // --- Rendu principal ---
 export async function renderTasks() {
@@ -293,17 +294,37 @@ export async function renderTasks() {
       taskList.appendChild(buildTaskItem(t, "main"));
     });
 
-  // --- Échéances groupées par mois (triées par date croissante)
-  const echeances = tasks
-    .filter(t => t.due && !echeancesMasquees.has(t.id))
-    .map(t => ({ ...t, dueDate: new Date(t.due) }))
-    .sort((a, b) => a.dueDate - b.dueDate);
+  // --- Échéances : tâches avec date + rendez-vous (tri chronologique, groupés par mois)
+  const eventsList = await getEvents();
+
+  const taskRows = tasks
+    .filter((t) => t.due && !echeancesMasquees.has(t.id))
+    .map((t) => ({
+      kind: "task",
+      sortDate: new Date(t.due),
+      task: t,
+    }));
+
+  const eventRows = eventsList
+    .filter((ev) => !echeancesMasqueesEvents.has(ev.id))
+    .map((ev) => ({
+      kind: "event",
+      sortDate: new Date(ev.date + " " + (ev.time || "00:00")),
+      event: ev,
+    }));
+
+  const combined = [...taskRows, ...eventRows].sort(
+    (a, b) => a.sortDate - b.sortDate
+  );
 
   let currentMonth = "";
   let monthList = null;
 
-  echeances.forEach(t => {
-    const mois = t.dueDate.toLocaleString("fr-FR", { month: "long", year: "numeric" });
+  combined.forEach((item) => {
+    const mois = item.sortDate.toLocaleString("fr-FR", {
+      month: "long",
+      year: "numeric",
+    });
 
     if (mois !== currentMonth) {
       currentMonth = mois;
@@ -322,34 +343,62 @@ export async function renderTasks() {
 
     const dateSpan = document.createElement("span");
     dateSpan.classList.add("echeance-date");
-    dateSpan.textContent = t.due;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(t.due);
-    dueDate.setHours(0, 0, 0, 0);
 
-    if (dueDate < today) {
-      dateSpan.style.color = "#b00";
+    const titleSpan = document.createElement("span");
+    titleSpan.classList.add("echeance-title");
+
+    const hideBtn = document.createElement("button");
+    hideBtn.textContent = "❌";
+    hideBtn.classList.add("delete-btn");
+
+    if (item.kind === "task") {
+      const t = item.task;
+      dateSpan.textContent = t.due;
+
+      const dueDate = new Date(t.due);
+      dueDate.setHours(0, 0, 0, 0);
+      if (dueDate < today) {
+        dateSpan.style.color = "#b00";
+      } else {
+        dateSpan.style.color = "#333";
+      }
+
+      titleSpan.textContent = t.title;
+
+      hideBtn.onclick = () => {
+        echeancesMasquees.add(t.id);
+        renderTasks();
+      };
     } else {
-      dateSpan.style.color = "#333";
+      const ev = item.event;
+      if (ev.time) {
+        dateSpan.textContent = `${ev.date} à ${ev.time}`;
+      } else {
+        dateSpan.textContent = ev.date;
+      }
+
+      const evDay = new Date(ev.date);
+      evDay.setHours(0, 0, 0, 0);
+      if (evDay < today) {
+        dateSpan.style.color = "#b00";
+      } else {
+        dateSpan.style.color = "#333";
+      }
+
+      titleSpan.textContent = `📅 ${ev.title}`;
+
+      hideBtn.onclick = () => {
+        echeancesMasqueesEvents.add(ev.id);
+        renderTasks();
+      };
     }
 
     const arrow = document.createElement("span");
     arrow.classList.add("echeance-arrow");
     arrow.textContent = "→";
-
-    const titleSpan = document.createElement("span");
-    titleSpan.classList.add("echeance-title");
-    titleSpan.textContent = t.title;
-
-    const hideBtn = document.createElement("button");
-    hideBtn.textContent = "❌";
-    hideBtn.classList.add("delete-btn");
-    hideBtn.onclick = () => {
-      echeancesMasquees.add(t.id);
-      renderTasks();
-    };
 
     dl.appendChild(dateSpan);
     dl.appendChild(arrow);
@@ -421,6 +470,8 @@ export async function renderEvents() {
     editBtn.textContent = "✏️";
     editBtn.classList.add("edit-cat-btn");
     editBtn.onclick = () => {
+      const titleEl = document.getElementById("eventModalTitle");
+      if (titleEl) titleEl.textContent = "Modifier un rendez-vous";
       document.getElementById("eventId").value = ev.id;
       document.getElementById("eventEditTitle").value = ev.title;
       document.getElementById("eventEditDate").value = ev.date;
@@ -456,6 +507,73 @@ export async function renderEvents() {
   });
 }
 
+function openEventModalForCreate() {
+  const titleEl = document.getElementById("eventModalTitle");
+  if (titleEl) titleEl.textContent = "Nouveau rendez-vous";
+  document.getElementById("eventId").value = "";
+  document.getElementById("eventEditTitle").value = "";
+  document.getElementById("eventEditDate").value = "";
+  document.getElementById("eventEditTime").value = "";
+  document.getElementById("eventModal").classList.remove("hidden");
+}
+
+function closeEventModal() {
+  const m = document.getElementById("eventModal");
+  if (m) m.classList.add("hidden");
+}
+
+const openEventModalBtn = document.getElementById("openEventModal");
+const eventEditForm = document.getElementById("eventEditForm");
+const closeEventModalEl = document.getElementById("closeEventModal");
+const eventModalEl = document.getElementById("eventModal");
+
+if (openEventModalBtn) {
+  openEventModalBtn.addEventListener("click", openEventModalForCreate);
+}
+
+if (closeEventModalEl) {
+  closeEventModalEl.addEventListener("click", closeEventModal);
+}
+
+if (eventModalEl) {
+  eventModalEl.addEventListener("click", (e) => {
+    if (e.target === eventModalEl) closeEventModal();
+  });
+}
+
+if (eventEditForm) {
+  eventEditForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const idRaw = document.getElementById("eventId").value;
+    const title = document.getElementById("eventEditTitle").value.trim();
+    const date = document.getElementById("eventEditDate").value;
+    const timeRaw = document.getElementById("eventEditTime").value;
+    const time = timeRaw || null;
+
+    if (!title) {
+      alert("Le titre est requis");
+      return;
+    }
+    if (!date) {
+      alert("La date est requise");
+      return;
+    }
+
+    if (idRaw) {
+      const events = await getEvents();
+      const existing = events.find((x) => x.id === Number(idRaw));
+      if (!existing) {
+        alert("Événement introuvable.");
+        return;
+      }
+      await updateEvent({ ...existing, title, date, time });
+    } else {
+      await addEvent({ title, date, time });
+    }
+
+    closeEventModal();
+  });
+}
 
 
 
@@ -478,10 +596,10 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Quand on clique sur Fusionner ou Remplacer tout
+// Fusionner / Importer dans ce flow / Remplacer tout
 document.querySelectorAll(".import-option").forEach(option => {
   option.addEventListener("click", () => {
-    const mode = option.dataset.mode; // "fusion" ou "remplacer"
+    const mode = option.dataset.mode; // "fusion" | "dans-ce-flow" | "remplacer"
     importMenu.classList.add("hidden");
 
     // stocke le mode et ouvre le sélecteur de fichier
@@ -533,7 +651,7 @@ async function viderBaseDeDonnees({ withWorkspaces, withCategories }) {
   }
 }
 
-// 🔧 importer JSON avec fusion/remplacement (version multi-flows)
+// 🔧 importer JSON : fusion / import dans le flow actuel / remplacement
 export async function importerJSON(contenu, mode = "fusion") {
   try {
     const data = JSON.parse(contenu);
@@ -542,6 +660,39 @@ export async function importerJSON(contenu, mode = "fusion") {
     const hasCategories = Array.isArray(data.categories);
     const hasTasks = Array.isArray(data.tasks);
     const hasEvents = Array.isArray(data.events);
+
+    // Seul « Importer dans ce flow » limite tâches / RDV au flow ouvert.
+    if (mode === "remplacer") {
+      let msg =
+        "Remplacer tout efface toutes les tâches et tous les rendez-vous, pour tous les flows.";
+      if (hasCategories) {
+        msg += "\n\nToutes les catégories seront aussi effacées.";
+      }
+      if (hasWorkspaces) {
+        msg += "\n\nTous les flows seront supprimés puis remplacés par ceux du fichier.";
+      } else {
+        msg +=
+          "\n\nLes flows ne sont pas supprimés (fichier sans liste de flows) : seules les tâches et les RDV sont vidés.";
+      }
+      msg += "\n\nContinuer ?";
+      if (!confirm(msg)) return;
+    }
+
+    if (mode === "fusion" && hasWorkspaces) {
+      const msg =
+        "Fusionner avec un fichier multi-flows : des tâches ou rendez-vous peuvent être ajoutés dans d’autres flows que celui ouvert, et de nouveaux flows peuvent apparaître dans le menu.\n\n" +
+        "Pour que tout aille uniquement dans le flow actuellement ouvert, annulez et choisissez « Importer dans ce flow ».\n\n" +
+        "Continuer ?";
+      if (!confirm(msg)) return;
+    }
+
+    const fusionLike = mode === "fusion" || mode === "dans-ce-flow";
+
+    /** Évite les erreurs IndexedDB (clé `id` déjà présente) en fusion / dans-ce-flow. */
+    const withoutStoredId = (row) => {
+      const { id, ...rest } = row;
+      return rest;
+    };
 
     // Sécurité : si ancien format { tasks, events } sans workspaces/categories
     // on ne touche pas aux stores "workspaces" et "categories" en mode "remplacer".
@@ -554,13 +705,14 @@ export async function importerJSON(contenu, mode = "fusion") {
 
     // ---- WORKSPACES ----
     const wsIdMap = {}; // id du JSON -> id local
-    let defaultWorkspaceId = null;
 
-    if (hasWorkspaces) {
+    if (mode === "dans-ce-flow") {
+      // Tout le contenu ira dans le flow sélectionné : on ne recrée pas les flows du fichier
+      await ensureDefaultWorkspace();
+    } else if (hasWorkspaces) {
       const existingWs = await getWorkspaces();
 
       if (mode === "fusion") {
-        // On fusionne : on ajoute ceux qui n'existent pas, on garde les existants
         for (const ws of data.workspaces) {
           const sameId = existingWs.find(w => w.id === ws.id);
           if (sameId) {
@@ -571,38 +723,33 @@ export async function importerJSON(contenu, mode = "fusion") {
           }
         }
       } else {
-        // mode "remplacer" : on repart de zéro pour les workspaces (si présents)
         for (const ws of data.workspaces) {
           await addWorkspace(ws);
           wsIdMap[ws.id] = ws.id;
         }
       }
-
-      // Choisir un workspace courant par défaut :
-      const allWsAfter = await getWorkspaces();
-      const firstActive = allWsAfter.find(w => !w.archived) || allWsAfter[0];
-      if (firstActive) {
-        defaultWorkspaceId = firstActive.id;
-      } else {
-        const ws = await ensureDefaultWorkspace();
-        defaultWorkspaceId = ws.id;
-      }
     } else {
-      // Pas de workspaces dans le fichier : on s'appuie sur la logique existante
-      const ws = await ensureDefaultWorkspace();
-      defaultWorkspaceId = ws.id;
+      await ensureDefaultWorkspace();
     }
+
+    const importTargetWsId = await getCurrentWorkspaceId();
 
     // ---- CATEGORIES ----
     if (hasCategories) {
       const existingCats = await getCategories();
 
       for (const cat of data.categories) {
-        if (mode === "fusion") {
+        if (fusionLike) {
           const sameId = existingCats.find(c => c.id === cat.id);
-          if (sameId) continue; // on garde la locale
+          if (sameId) continue;
         }
-        await addCategory(cat);
+        await addCategory({
+          ...cat,
+          workspaceId:
+            mode === "dans-ce-flow"
+              ? importTargetWsId
+              : (cat.workspaceId ?? importTargetWsId),
+        });
       }
     }
 
@@ -611,23 +758,23 @@ export async function importerJSON(contenu, mode = "fusion") {
       let existingTasks = await getAllData("tasks");
 
       for (const raw of data.tasks) {
-        // Workspace cible
-        let targetWsId = defaultWorkspaceId;
+        let targetWsId = importTargetWsId;
 
-        if (raw.workspaceId && wsIdMap[raw.workspaceId]) {
-          targetWsId = wsIdMap[raw.workspaceId];
-        } else if (raw.workspaceId && !hasWorkspaces) {
-          // Ancien fichier : on ignore l'id absent du mapping et on tombe sur defaultWorkspaceId
-          targetWsId = defaultWorkspaceId;
+        if (mode !== "dans-ce-flow") {
+          if (raw.workspaceId && wsIdMap[raw.workspaceId]) {
+            targetWsId = wsIdMap[raw.workspaceId];
+          } else if (raw.workspaceId && !hasWorkspaces) {
+            targetWsId = importTargetWsId;
+          }
         }
 
+        const taskPayload = fusionLike ? withoutStoredId(raw) : raw;
         const t = {
-          ...raw,
+          ...taskPayload,
           workspaceId: targetWsId,
         };
 
-        if (mode === "fusion") {
-          // Détection de doublon : même titre + même workspace + même due
+        if (fusionLike) {
           const exists = existingTasks.some(
             ex =>
               ex.title === t.title &&
@@ -639,7 +786,6 @@ export async function importerJSON(contenu, mode = "fusion") {
           await addTask(t);
           existingTasks.push(t);
         } else {
-          // mode "remplacer" : on importe tout
           await addTask(t);
         }
       }
@@ -650,20 +796,23 @@ export async function importerJSON(contenu, mode = "fusion") {
       let existingEvents = await getAllData("events");
 
       for (const rawEv of data.events) {
-        let targetWsId = defaultWorkspaceId;
+        let targetWsId = importTargetWsId;
 
-        if (rawEv.workspaceId && wsIdMap[rawEv.workspaceId]) {
-          targetWsId = wsIdMap[rawEv.workspaceId];
-        } else if (rawEv.workspaceId && !hasWorkspaces) {
-          targetWsId = defaultWorkspaceId;
+        if (mode !== "dans-ce-flow") {
+          if (rawEv.workspaceId && wsIdMap[rawEv.workspaceId]) {
+            targetWsId = wsIdMap[rawEv.workspaceId];
+          } else if (rawEv.workspaceId && !hasWorkspaces) {
+            targetWsId = importTargetWsId;
+          }
         }
 
+        const eventPayload = fusionLike ? withoutStoredId(rawEv) : rawEv;
         const ev = {
-          ...rawEv,
+          ...eventPayload,
           workspaceId: targetWsId,
         };
 
-        if (mode === "fusion") {
+        if (fusionLike) {
           const exists = existingEvents.some(
             ex =>
               ex.title === ev.title &&
@@ -681,15 +830,19 @@ export async function importerJSON(contenu, mode = "fusion") {
       }
     }
 
-    // Rendu final
     await renderTasks();
     await renderEvents();
 
-    alert(
-      `✅ Import terminé (${mode === "fusion"
+    window.dispatchEvent(new CustomEvent("focusflow-workspaces-changed"));
+
+    const modeLabel =
+      mode === "fusion"
         ? "fusion multi-flows sans doublons"
-        : "remplacement total des données concernées"})`
-    );
+        : mode === "dans-ce-flow"
+          ? "import dans le flow actuel"
+          : "remplacement total des données concernées";
+
+    alert(`✅ Import terminé (${modeLabel})`);
   } catch (err) {
     console.error("Erreur import:", err);
     alert("❌ Fichier invalide ou erreur d’import.");
@@ -866,4 +1019,86 @@ if (addCategoryBtn) {
         await renderCategoryManager();
         await renderTasks();
     });
+}
+
+// ---------------------------------------------------------
+// --- Modale nouvelle tâche (bouton ➕ + formulaire)
+// ---------------------------------------------------------
+const openTaskModalBtn = document.getElementById("openTaskModal");
+const taskModal = document.getElementById("taskModal");
+const closeTaskModalEl = document.getElementById("closeTaskModal");
+const taskForm = document.getElementById("taskForm");
+const taskCategorySelect = document.getElementById("taskCategory");
+
+async function fillTaskModalCategories() {
+  if (!taskCategorySelect) return;
+  const cats = await fetchCategories();
+  taskCategorySelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  placeholder.textContent = "— Choisir une catégorie —";
+  taskCategorySelect.appendChild(placeholder);
+  cats.forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.name;
+    taskCategorySelect.appendChild(opt);
+  });
+}
+
+function closeTaskModal() {
+  taskModal?.classList.add("hidden");
+  taskForm?.reset();
+}
+
+if (openTaskModalBtn && taskModal) {
+  openTaskModalBtn.addEventListener("click", async () => {
+    await fillTaskModalCategories();
+    taskModal.classList.remove("hidden");
+  });
+}
+
+if (closeTaskModalEl) {
+  closeTaskModalEl.addEventListener("click", closeTaskModal);
+}
+
+if (taskModal) {
+  taskModal.addEventListener("click", (e) => {
+    if (e.target === taskModal) closeTaskModal();
+  });
+}
+
+if (taskForm) {
+  taskForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = document.getElementById("taskTitle")?.value.trim();
+    const coteRaw = document.getElementById("taskCote")?.value;
+    const due = document.getElementById("taskDue")?.value || null;
+    const category = taskCategorySelect?.value;
+
+    if (!title) {
+      alert("Le titre est requis");
+      return;
+    }
+    const cote = parseInt(coteRaw, 10);
+    if (!coteRaw || Number.isNaN(cote)) {
+      alert("Choisissez une cote");
+      return;
+    }
+    if (!category) {
+      alert("Choisissez une catégorie");
+      return;
+    }
+
+    await addTask({
+      title,
+      cote,
+      due,
+      category,
+    });
+
+    closeTaskModal();
+  });
 }

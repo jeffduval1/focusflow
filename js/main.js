@@ -1,10 +1,124 @@
-import { dbReady, getAllData, updateData, updateWorkspace, addWorkspace } from "./db.js";
+import {
+  dbReady,
+  getAllData,
+  updateData,
+  updateWorkspace,
+  addWorkspace,
+  deleteData,
+  deleteWorkspace,
+} from "./db.js";
 import { addTask, getTasks, updateTask } from "./tasks.js";
 import { addEvent, updateEvent, deleteEvent } from "./events.js";  
-import { renderTasks, renderEvents } from "./ui.js";
+import { renderTasks, renderEvents } from "./ui.js?v=20260329c";
 import { fetchCategories, createCategory, editCategory, removeCategory } from "./categories.js";
 import { ensureDefaultWorkspace, getCurrentWorkspaceId, setCurrentWorkspaceId } from "./workspaces.js";
 
+async function deleteWorkspaceCascade(wsId) {
+  const tasks = await getAllData("tasks");
+  for (const t of tasks) {
+    if (t.workspaceId === wsId) await deleteData("tasks", t.id);
+  }
+  const events = await getAllData("events");
+  for (const e of events) {
+    if (e.workspaceId === wsId) await deleteData("events", e.id);
+  }
+  const categories = await getAllData("categories");
+  for (const c of categories) {
+    if (c.workspaceId === wsId) await deleteData("categories", c.id);
+  }
+  await deleteWorkspace(wsId);
+}
+
+async function pickWorkspaceAfterRemoval() {
+  const all = await getAllData("workspaces");
+  const actives = all.filter((w) => !w.archived);
+  if (actives.length > 0) {
+    setCurrentWorkspaceId(actives[0].id);
+    return;
+  }
+  if (all.length === 0) {
+    await ensureDefaultWorkspace();
+    return;
+  }
+  await updateWorkspace({ ...all[0], archived: false });
+  setCurrentWorkspaceId(all[0].id);
+}
+
+async function ensureActiveWorkspaceAfterArchive() {
+  const all = await getAllData("workspaces");
+  const actives = all.filter((w) => !w.archived);
+  if (actives.length > 0) {
+    setCurrentWorkspaceId(actives[0].id);
+    return;
+  }
+  const newWs = {
+    id: "ws-" + Date.now(),
+    name: "Général",
+    archived: false,
+    createdAt: new Date().toISOString(),
+  };
+  await addWorkspace(newWs);
+  setCurrentWorkspaceId(newWs.id);
+}
+
+function closeWorkspaceFlowMenu() {
+  const menu = document.getElementById("workspaceFlowMenu");
+  if (menu) menu.classList.add("hidden");
+}
+
+/** Remplace le bouton du flow par un champ pour renommer (évite double-clic seul). */
+function attachFlowRenameEditor(trigger, currentWs) {
+  if (!trigger || !currentWs || trigger.tagName !== "BUTTON") return;
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = currentWs.name;
+  input.className = "workspace-flow-trigger-edit";
+  input.setAttribute("aria-label", "Nom du flow");
+
+  const parent = trigger.parentNode;
+  if (!parent) return;
+
+  parent.replaceChild(input, trigger);
+  input.focus();
+  input.select();
+
+  let settled = false;
+
+  function onBlur() {
+    void finalizeRename(true);
+  }
+
+  async function finalizeRename(save) {
+    if (settled) return;
+    settled = true;
+    input.removeEventListener("blur", onBlur);
+
+    if (!save) {
+      parent.replaceChild(trigger, input);
+      return;
+    }
+
+    const newName = input.value.trim() || currentWs.name;
+    if (newName !== currentWs.name) {
+      await updateWorkspace({ ...currentWs, name: newName });
+    }
+    await renderWorkspaceTabs();
+    await renderArchivedSection();
+  }
+
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      void finalizeRename(true);
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      void finalizeRename(false);
+    }
+  });
+
+  input.addEventListener("blur", onBlur);
+}
 
 // ---------------------------------------------------------
 // 🔧 Migration initiale (inchangé)
@@ -41,7 +155,7 @@ async function migrerWorkspaceIdSiNecessaire() {
 
 
 // ---------------------------------------------------------
-// 🔷 Étape 3 & 4 : Rendu des tabs de workspaces (inchangé)
+// 🔷 Sélecteur de flow (menu déroulant)
 // ---------------------------------------------------------
 async function renderWorkspaceTabs() {
   const container = document.getElementById("workspaceTabs");
@@ -54,101 +168,133 @@ async function renderWorkspaceTabs() {
   }
 
   const currentId = await getCurrentWorkspaceId();
+  const activeList = all.filter((w) => !w.archived);
+  const currentWs =
+    activeList.find((w) => w.id === currentId) || activeList[0] || null;
+
   container.innerHTML = "";
 
-all.filter(w => !w.archived).forEach(ws => {
-    const btn = document.createElement("button");
-    btn.textContent = ws.name;
-    btn.classList.add("workspace-tab");
+  const wrap = document.createElement("div");
+  wrap.className = "workspace-flow-wrapper import-wrapper";
 
-    if (ws.id === currentId) btn.classList.add("active");
-    if (ws.archived) btn.classList.add("archived");
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.id = "workspaceFlowTrigger";
+  trigger.className = "workspace-flow-trigger";
+  trigger.textContent = currentWs ? `${currentWs.name} ▼` : "Flow ▼";
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.setAttribute("aria-haspopup", "true");
+  trigger.title =
+    "Ouvrir le menu des flows — « Renommer ce flow » ou double-clic pour changer le nom";
 
-    // Empêche de cliquer un flow archivé
-    btn.addEventListener("click", async () => {
-      if (ws.archived) return;
-      if (ws.id === currentId) return;
+  const menu = document.createElement("div");
+  menu.id = "workspaceFlowMenu";
+  menu.className = "dropdown workspace-flow-menu hidden";
+  menu.setAttribute("role", "menu");
 
-      setCurrentWorkspaceId(ws.id);
-      await renderTasks();
-      await renderEvents();
-      await renderWorkspaceTabs();
-      await renderArchivedSection();
-    });
+  const others = activeList.filter((w) => w.id !== currentWs?.id);
 
-    // Renommage au double clic
-    btn.addEventListener("dblclick", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+  if (others.length > 0) {
+    const hint = document.createElement("div");
+    hint.className = "workspace-menu-hint";
+    hint.textContent = "Autres flows";
+    menu.appendChild(hint);
 
-      const input = document.createElement("input");
-      input.type = "text";
-      input.value = ws.name;
-      input.classList.add("workspace-tab-edit");
-
-      container.replaceChild(input, btn);
-      input.focus();
-      input.select();
-
-      const finalize = async (save) => {
-        if (!save) {
-          container.replaceChild(btn, input);
-          return;
-        }
-
-        const newName = input.value.trim() || ws.name;
-        if (newName !== ws.name) {
-          await updateWorkspace({ ...ws, name: newName });
-        }
+    others.forEach((ws) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "workspace-menu-item";
+      row.textContent = ws.name;
+      row.addEventListener("click", async () => {
+        closeWorkspaceFlowMenu();
+        if (ws.id === currentId) return;
+        setCurrentWorkspaceId(ws.id);
+        await renderTasks();
+        await renderEvents();
         await renderWorkspaceTabs();
         await renderArchivedSection();
-      };
-
-      input.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter") finalize(true);
-        else if (ev.key === "Escape") finalize(false);
       });
-
-      input.addEventListener("blur", () => finalize(true));
+      menu.appendChild(row);
     });
 
-    // Archiver/désarchiver au clic droit
-    btn.addEventListener("contextmenu", async (e) => {
-      e.preventDefault();
+    const sep0 = document.createElement("div");
+    sep0.className = "workspace-menu-sep";
+    menu.appendChild(sep0);
+  }
 
-      const archiver = !ws.archived;
-      const msg = archiver
-        ? `Archiver le flow « ${ws.name} » ?`
-        : `Désarchiver le flow « ${ws.name} » ?`;
-
-      if (!confirm(msg)) return;
-
-      await updateWorkspace({ ...ws, archived: archiver });
-
-      // Si on archive le workspace actif → basculer
-      const current = await getCurrentWorkspaceId();
-      if (archiver && ws.id === current) {
-        const others = all.filter(w => !w.archived && w.id !== ws.id);
-        if (others.length > 0) setCurrentWorkspaceId(others[0].id);
-      }
-
-      await renderWorkspaceTabs();
-      await renderArchivedSection();
-      await renderTasks();
-      await renderEvents();
-    });
-
-    container.appendChild(btn);
+  const renameBtn = document.createElement("button");
+  renameBtn.type = "button";
+  renameBtn.className = "workspace-menu-item";
+  renameBtn.textContent = "✏️ Renommer ce flow…";
+  renameBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeWorkspaceFlowMenu();
+    if (!currentWs) return;
+    const tr = document.getElementById("workspaceFlowTrigger");
+    attachFlowRenameEditor(tr, currentWs);
   });
+  menu.appendChild(renameBtn);
 
-  // Bouton Nouveau Flow
+  const archiveBtn = document.createElement("button");
+  archiveBtn.type = "button";
+  archiveBtn.className = "workspace-menu-item workspace-menu-item-muted";
+  archiveBtn.textContent = "📦 Archiver ce flow";
+  archiveBtn.addEventListener("click", async () => {
+    if (!currentWs) return;
+    closeWorkspaceFlowMenu();
+    const msg = `Archiver le flow « ${currentWs.name} » ?`;
+    if (!confirm(msg)) return;
+
+    await updateWorkspace({ ...currentWs, archived: true });
+
+    const othersLeft = activeList.filter((w) => w.id !== currentWs.id);
+    if (othersLeft.length > 0) {
+      setCurrentWorkspaceId(othersLeft[0].id);
+    } else {
+      await ensureActiveWorkspaceAfterArchive();
+    }
+
+    await renderWorkspaceTabs();
+    await renderArchivedSection();
+    await renderTasks();
+    await renderEvents();
+  });
+  menu.appendChild(archiveBtn);
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "workspace-menu-item workspace-menu-danger";
+  deleteBtn.textContent = "🗑️ Supprimer ce flow…";
+  deleteBtn.addEventListener("click", async () => {
+    if (!currentWs) return;
+    closeWorkspaceFlowMenu();
+    const msg =
+      `Supprimer définitivement « ${currentWs.name} » ?\n\n` +
+      "Toutes les tâches, échéances et rendez-vous de ce flow seront effacés.";
+    if (!confirm(msg)) return;
+
+    await deleteWorkspaceCascade(currentWs.id);
+    await pickWorkspaceAfterRemoval();
+
+    await renderWorkspaceTabs();
+    await renderArchivedSection();
+    await renderTasks();
+    await renderEvents();
+  });
+  menu.appendChild(deleteBtn);
+
+  const sep1 = document.createElement("div");
+  sep1.className = "workspace-menu-sep";
+  menu.appendChild(sep1);
+
   const newBtn = document.createElement("button");
+  newBtn.type = "button";
+  newBtn.className = "workspace-menu-item workspace-menu-new";
   newBtn.textContent = "+ Nouveau flow";
-  newBtn.classList.add("workspace-tab", "workspace-tab-new");
-
   newBtn.addEventListener("click", async () => {
+    closeWorkspaceFlowMenu();
     const allWs = await getAllData("workspaces");
-    const existingNames = new Set(allWs.map(w => w.name));
+    const existingNames = new Set(allWs.map((w) => w.name));
 
     let index = allWs.length + 1;
     let candidate = "Flow " + index;
@@ -173,8 +319,42 @@ all.filter(w => !w.archived).forEach(ws => {
     await renderWorkspaceTabs();
     await renderArchivedSection();
   });
+  menu.appendChild(newBtn);
 
-  container.appendChild(newBtn);
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (e.detail >= 2) return;
+    menu.classList.toggle("hidden");
+    const isOpen = !menu.classList.contains("hidden");
+    trigger.setAttribute("aria-expanded", String(isOpen));
+  });
+
+  trigger.addEventListener("dblclick", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeWorkspaceFlowMenu();
+    attachFlowRenameEditor(trigger, currentWs);
+  });
+
+  wrap.appendChild(trigger);
+  wrap.appendChild(menu);
+  container.appendChild(wrap);
+}
+
+function onWorkspaceFlowOutsideClick(e) {
+  if (!e.target.closest(".workspace-flow-wrapper")) {
+    closeWorkspaceFlowMenu();
+    const tr = document.getElementById("workspaceFlowTrigger");
+    if (tr) tr.setAttribute("aria-expanded", "false");
+  }
+}
+
+function onWorkspaceFlowEscape(e) {
+  if (e.key === "Escape") {
+    closeWorkspaceFlowMenu();
+    const tr = document.getElementById("workspaceFlowTrigger");
+    if (tr) tr.setAttribute("aria-expanded", "false");
+  }
 }
 
 
@@ -208,10 +388,17 @@ async function renderArchivedSection() {
   archived.forEach(ws => {
     const row = document.createElement("div");
     row.classList.add("archived-row");
-    row.textContent = ws.name;
 
-    // Bouton désarchiver
+    const title = document.createElement("span");
+    title.className = "archived-row-title";
+    title.textContent = ws.name;
+    row.appendChild(title);
+
+    const actions = document.createElement("div");
+    actions.className = "archived-row-actions";
+
     const btn = document.createElement("button");
+    btn.type = "button";
     btn.textContent = "↩️ Désarchiver";
     btn.classList.add("unarchive-btn");
 
@@ -222,7 +409,28 @@ async function renderArchivedSection() {
       await renderArchivedSection();
     });
 
-    row.appendChild(btn);
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.textContent = "🗑️ Supprimer";
+    delBtn.classList.add("archived-delete-btn");
+    delBtn.addEventListener("click", async () => {
+      if (
+        !confirm(
+          `Supprimer définitivement « ${ws.name} » ? Les données de ce flow seront effacées.`
+        )
+      ) {
+        return;
+      }
+      await deleteWorkspaceCascade(ws.id);
+      await renderWorkspaceTabs();
+      await renderArchivedSection();
+      await renderTasks();
+      await renderEvents();
+    });
+
+    actions.appendChild(btn);
+    actions.appendChild(delBtn);
+    row.appendChild(actions);
     list.appendChild(row);
   });
 
@@ -246,6 +454,13 @@ renderTasks();
 renderEvents();
 initCollapsibleEisenhower();
 initCollapsiblePanels();
+
+document.addEventListener("click", onWorkspaceFlowOutsideClick);
+document.addEventListener("keydown", onWorkspaceFlowEscape);
+window.addEventListener("focusflow-workspaces-changed", async () => {
+  await renderWorkspaceTabs();
+  await renderArchivedSection();
+});
 
 
 // Rendre les listes Eisenhower collapsables par rangée (haut = 2, bas = 2)

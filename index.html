@@ -21,11 +21,15 @@
                 <div id="importMenu" class="dropdown hidden">
                     <div class="import-option" data-mode="fusion">
                         🔄 Fusionner 
-                        <span class="info" data-info="Ajoute seulement les nouvelles tâches/événements. Si le titre existe déjà, on garde l’existant.">ℹ️</span>
+                        <span class="info" data-info="Garde tout l’existant et ajoute le fichier. Ignore les doublons (même titre + même flow cible + même échéance / date RDV). Multi-flows : chaque entrée reste sur le flow indiqué dans le JSON, pas sur le flow ouvert.">ℹ️</span>
+                    </div>
+                    <div class="import-option" data-mode="dans-ce-flow">
+                        📌 Importer dans ce flow
+                        <span class="info" data-info="Seule option où tâches et RDV importés vont uniquement dans le flow ouvert (aucun autre flow modifié). Comme Fusionner pour l’anti-doublon. Les catégories restent partagées à l’échelle de l’app.">ℹ️</span>
                     </div>
                     <div class="import-option" data-mode="remplacer">
                         🗑️ Remplacer tout 
-                        <span class="info" data-info="Supprime toutes les données actuelles et recharge uniquement celles du fichier importé.">ℹ️</span>
+                        <span class="info" data-info="Efface les données actuelles (tâches, RDV ; catégories et flows si le fichier les contient) puis ne garde que le contenu du JSON. Pour restaurer une sauvegarde ou repartir de zéro.">ℹ️</span>
                     </div>
                 </div>
                 <input type="file" id="importFile" accept="application/json" hidden>
@@ -77,12 +81,7 @@
 
                 <section id="events">
                     <h2>📅 Rendez-vous</h2>
-                    <form id="eventForm">
-                        <input type="text" id="eventTitle" placeholder="Nouvel événement" required>
-                        <input type="date" id="eventDate" required>
-                        <input type="time" id="eventTime">
-                        <button type="submit">Ajouter événement</button>
-                    </form>
+                    <button type="button" id="openEventModal">➕ Nouveau rendez-vous</button>
                     <ul></ul>
                 </section>
 
@@ -104,7 +103,7 @@
 
     </main>
 
-    <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/main.js?v=20260329c"></script>
 
     <!-- Modale d'ajout de tâche -->
     <div id="taskModal" class="modal hidden">
@@ -141,17 +140,17 @@
         </div>
     </div>
 
-    <!-- Modale modification événement -->
+    <!-- Modale création / modification événement -->
     <div id="eventModal" class="modal hidden">
         <div class="modal-content">
             <span id="closeEventModal" class="close">&times;</span>
-            <h2>Modifier un événement</h2>
+            <h2 id="eventModalTitle">Rendez-vous</h2>
             <form id="eventEditForm">
-                <input type="hidden" id="eventId">
+                <input type="hidden" id="eventId" value="">
                 <input type="text" id="eventEditTitle" placeholder="Nom de l’événement" required>
                 <input type="date" id="eventEditDate" required>
                 <input type="time" id="eventEditTime">
-                <button type="submit">💾 Sauvegarder</button>
+                <button type="submit">Enregistrer</button>
             </form>
         </div>
     </div>
