@@ -175,15 +175,28 @@
 
     <!-- Modale création / modification événement -->
     <div id="eventModal" class="modal hidden">
-        <div class="modal-content">
-            <span id="closeEventModal" class="close">&times;</span>
-            <h2 id="eventModalTitle">Rendez-vous</h2>
-            <form id="eventEditForm">
+        <div class="modal-content modal-content--task">
+            <button type="button" id="closeEventModal" class="close modal-close" aria-label="Fermer">&times;</button>
+            <h2 class="modal-title" id="eventModalTitle">Rendez-vous</h2>
+            <form id="eventEditForm" class="task-form">
                 <input type="hidden" id="eventId" value="">
-                <input type="text" id="eventEditTitle" placeholder="Nom de l’événement" required>
-                <input type="date" id="eventEditDate" required>
-                <input type="time" id="eventEditTime">
-                <button type="submit">Enregistrer</button>
+                <div class="form-field">
+                    <label for="eventEditTitle">Titre</label>
+                    <input type="text" id="eventEditTitle" placeholder="Ex. Rendez-vous médical" required autocomplete="off">
+                </div>
+                <div class="form-row form-row--split">
+                    <div class="form-field">
+                        <label for="eventEditDate">Date</label>
+                        <input type="date" id="eventEditDate" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="eventEditTime">Heure <span class="form-hint">(facultatif)</span></label>
+                        <input type="time" id="eventEditTime" step="300" title="Par pas de 5 minutes">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-task-submit">Enregistrer</button>
+                </div>
             </form>
         </div>
     </div>

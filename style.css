@@ -167,7 +167,8 @@ button {
 
 .task-form input[type="text"],
 .task-form select,
-.task-form input[type="date"] {
+.task-form input[type="date"],
+.task-form input[type="time"] {
   width: 100%;
   box-sizing: border-box;
   padding: 0.55rem 0.75rem;
